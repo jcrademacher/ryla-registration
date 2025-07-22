@@ -1,0 +1,44 @@
+
+
+$primary: #003f2e;
+$secondary: #5f7e70;
+$info: #003f2e;
+$highlight: #ffe7c4;
+$program: #e1f7df;
+$element: $highlight;
+$time: #fcfcfc;
+$global: #194d33;
+$error: red;
+$warning: rgb(238, 185, 37);
+$masterActivity: #cccccc;
+$legActivity: #ffffff;
+// $light: white;
+
+:export {
+    primary: $primary;
+    secondary: $secondary;
+    info: $info;
+    highlight: $highlight;
+    element: $element;
+    program: $program;
+    time: $time;
+    global: $global;
+    error: $error;
+    warning: $warning;
+    masterActivity: $masterActivity;
+    legActivity: $legActivity;
+}
+
+@import "node_modules/bootstrap/scss/bootstrap";
+
+$theme-colors: (
+  "primary": $primary,
+  "secondary": $secondary,
+  "info": $info,
+  "highlight": $highlight,
+  "error": $error,
+  "warning": $warning
+);
+
+
+
