@@ -1,9 +1,8 @@
 import { defineFunction } from '@aws-amplify/backend';
-import { adminEmails } from '../../auth/utils';
 
 export const preventSignup = defineFunction({
     name: 'pre-sign-up',
     environment: {
-        ADMIN_EMAILS: adminEmails.join(',')
+        ADMIN_EMAILS: process.env.REACT_APP_ADMIN_EMAILS ?? ""
     }
 });
