@@ -61,10 +61,13 @@ export const removeUserFromGroups = async (username: string, groupNames: AuthGro
     return response
 }
 
-export const adminEmails = [
-    "jackradema@gmail.com",
-    "jaceychavez12@gmail.com"
-]
+//
+// npx dotenvx run --env-file=.env.local -- ampx sandbox
+
+
+const adminEmailsListString = process.env.REACT_APP_ADMIN_EMAILS;
+
+export const adminEmails = adminEmailsListString ? adminEmailsListString.split(',') : [];
 
 export type AuthGroup = "ADMINS" | "ROTARIANS" | "NEW";
 
