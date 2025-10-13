@@ -1,9 +1,10 @@
 import { fetchAuthSession, fetchUserAttributes } from "aws-amplify/auth";
 import { checkErrors, client } from ".";
 import { AuthGroup } from "../../amplify/auth/utils";
+import { AuthSession } from "aws-amplify/auth";
 
-export async function getUserGroups() {
-    const session = await fetchAuthSession();
+export function getUserGroups(session: AuthSession) {
+    // console.log("session", session);
     const groups = session?.tokens?.accessToken.payload['cognito:groups'] || [];
     return JSON.stringify(groups);
 }
@@ -18,19 +19,19 @@ export async function getUserAttributes() {
     return attributes;
 }
 
-export function isUserNew(groups: string) {
+export function isUserNew(groups: string | string[]) {
     return groups.includes('NEW');
 }
 
-export function isUserAdmin(groups: string) {
+export function isUserAdmin(groups: string | string[]) {
     return groups.includes('ADMINS');
 }
 
-export function isUserRotarian(groups: string) {
+export function isUserRotarian(groups: string | string[]) {
     return groups.includes('ROTARIANS');
 }
 
-export function isUserCamper(groups: string) {
+export function isUserCamper(groups: string | string[]) {
     return !isUserAdmin(groups) && !isUserRotarian(groups) && !isUserNew(groups);
 }
 
@@ -38,6 +39,7 @@ export async function listAllUsers() {
     const response = await client.queries.listUsers();
 
     checkErrors(response.errors);
+    console.log(response.data);
 
     return JSON.parse(response.data as string ?? "{}");
 }
@@ -69,6 +71,23 @@ export async function deleteUser(userSub: string): Promise<Object> {
     });
     checkErrors(response.errors);
     return JSON.parse(response.data as string ?? "{}");
+}
+
+export async function getUser(username: string) {
+    const response = await client.queries.getUser({
+        username
+    }, { authMode: "userPool" });
+
+    checkErrors(response.errors);
+    return JSON.parse(response.data as string ?? "{}");
+}
+
+export function getUserSubFromAttr(attr: any[]): string | undefined {
+    return attr.find((a: { Name: string, Value: string }) => a.Name === 'sub')?.Value;
+}
+
+export function getUserEmailFromAttr(attr: any[]): string | undefined {
+    return attr.find((a: { Name: string, Value: string }) => a.Name === 'email')?.Value;
 }
 
 // export async function listAllUsersInGroup(group: string) {

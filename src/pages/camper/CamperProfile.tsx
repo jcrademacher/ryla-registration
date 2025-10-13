@@ -1,11 +1,11 @@
-import { useEffect, useState, useRef, useContext, useCallback } from "react";
+import { useEffect, useState, useRef, useContext, useCallback, useMemo } from "react";
 import { AuthContext } from "../../App";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { MultiStepView } from "../../components/modals";
 import { IconButton } from "../../utils/button";
-import { Placeholder, Form, Row, Col, Alert } from "react-bootstrap";
-import { faChevronRight, faChevronLeft, faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { Form, Row, Col } from "react-bootstrap";
+import { faChevronRight, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { GENDER_OPTIONS, PHONE_REGEX, EMAIL_REGEX } from "../constants";
 import { emitToast, ToastType } from "../../utils/notifications";
 import { useUpdateProfileMutation, useCreateProfileMutation } from "../../queries/mutations";
@@ -16,6 +16,8 @@ import {
 import { useForm } from "react-hook-form";
 import { ThinSpacer } from "../../components/ThinSpacer";
 import { SpinnerButton } from "../../utils/button";
+import { createEDT, createFromISO } from "../../utils/datetime";
+import { DateTime } from "luxon";
 
 function nullifyEmptyStrings<T extends object>(obj: T): T {
     // Get all keys of the object
@@ -29,7 +31,7 @@ function nullifyEmptyStrings<T extends object>(obj: T): T {
     return result;
 }
 
-const Req = () => (<span style={{ color: 'red' }}>*</span>);
+export const Req = () => (<span style={{ color: 'red' }}>*</span>);
 
 
 type CamperUserProfileForm1Type = {
@@ -86,7 +88,7 @@ const mapFormToSchema1 = (form: CamperUserProfileForm1Type, userSub?: string): U
     }
 }
 
-function CamperProfileForm1({ camperProfile, onBack, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) {
+function CamperProfileForm1({ camperProfile, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) {
 
     const authContext = useContext(AuthContext);
 
@@ -124,8 +126,8 @@ function CamperProfileForm1({ camperProfile, onBack, onNext }: { camperProfile: 
     const validateBirthdate = useCallback((value: string | null) => {
         if (!value) return false;
 
-        const birthdate = (new Date(value)).getTime();
-        const now = (new Date()).getTime();
+        const birthdate = createEDT(value).toMillis();
+        const now = DateTime.now().toMillis();
 
         return birthdate < now - 13 * 365 * 24 * 60 * 60 * 1000;
     }, []);
@@ -388,8 +390,6 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
     const [saving, setSaving] = useState(false);
 
     const authContext = useContext(AuthContext);
-
-    const navigate = useNavigate();
 
     const updateProfileMutation = useUpdateProfileMutation();
     const queryClient = useQueryClient();
@@ -774,9 +774,7 @@ const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperProfile: 
 }
 
 import { DIETARY_RESTRICTIONS } from '../constants';
-import { useCamperProfileQuery, useRotarianReviewQuery } from '../../queries/queries';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { ProtectedRoute } from '../../components/ProtectedRoute';
+import { useCamperProfileQuery, useCamperYearQuery } from '../../queries/queries';
 
 type CamperUserProfileForm4Type = {
     dietaryRestrictions: string | null;
@@ -901,116 +899,6 @@ function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperProfile: 
                     </Form.Group>
                 </Col>
             </Row>
-            <br />
-            <Alert variant="warning">
-                <FontAwesomeIcon icon={faCircleExclamation} style={{ marginRight: 10 }} />
-                <strong>Students: Please read the following information carefully</strong>
-            </Alert>
-            <Row>
-                <Form.Group>
-                    <Form.Label as="strong">
-                        Medical Form Acknowledgment
-                    </Form.Label>
-                    <Form.Check
-                        type="checkbox"
-                        required={true}
-                        label={
-                            <span>
-                                <Req />I acknowledge that I must fill out a medical form
-                                which I will receive in a welcome package in the
-                                upcoming weeks. This form will include any
-                                medication and/or allergies I may have and will also
-                                require completion by my primary care physician
-                                and needs to be completed and mailed to RYLA by
-                                June 1st.
-                            </span>
-                        } />
-                </Form.Group>
-            </Row>
-            <br />
-            <Row>
-                <Form.Group>
-                    <Form.Label as="strong">
-                        Scholarship Acknowledgment
-                    </Form.Label>
-                    <Form.Check
-                        type="checkbox"
-                        required={true}
-                        label={
-                            <span>
-                                <Req />I acknowledge that by signing I am applying for
-                                RYLA 2025 and I am able to attend 4 full days -
-                                June 22nd to June 25th and I acknowledge that I
-                                am receiving a full scholarship valued at $800 to
-                                attend camp.
-                            </span>
-                        } />
-                </Form.Group>
-            </Row>
-            <br />
-            <Alert variant="warning">
-                <FontAwesomeIcon icon={faCircleExclamation} style={{ marginRight: 10 }} />
-                <strong>Parents: Please read the following information carefully</strong>
-            </Alert>
-            <Row>
-                <Form.Group>
-                    <Form.Label as="strong">
-                        STUDENT DROP OFF - SUNDAY, JUNE 22ND, 2025
-                    </Form.Label>
-                    <Form.Check
-                        type="checkbox"
-                        required={true}
-                        label={
-                            <span>
-                                <Req />Students arrive at 8:30am for drop off at Camp
-                                Hinds. We have a full system of registration that
-                                will allow for all 144 students to register and
-                                begin camp within one hour.
-                            </span>
-                        } />
-                </Form.Group>
-            </Row>
-            <br />
-            <Row>
-                <Form.Group>
-                    <Form.Label as="strong">
-                        FINAL BBQ - WEDNESDAY, JUNE 25TH, 2025
-                    </Form.Label>
-                    <Form.Check
-                        type="checkbox"
-                        required={true}
-                        label={
-                            <span>
-                                <Req />On Wednesday, June 25th there is a final BBQ
-                                and ceremony that begins at 5:15 pm and ends
-                                at 6:30. Tickets for the BBQ are $12.00,
-                                $20.00 for two, or $30.00 for three, etc.
-                                Student is covered by the scholarship.
-                            </span>
-                        } />
-                </Form.Group>
-            </Row>
-            <br />
-            <Row>
-                <Form.Group>
-                    <Form.Label as="strong">
-                        Scholarship Acknowledgment
-                    </Form.Label>
-                    <Form.Check
-                        type="checkbox"
-                        required={true}
-                        label={
-                            <span>
-                                <Req />I acknowledge this student has
-                                applied for and will accept if granted a
-                                scholarship valued at ($800) to Rotary Youth
-                                Leadership Camp (RYLA) and will attend
-                                starting Sunday, June 22nd at 8:30 AM through
-                                Wednesday, June 25th at 5:15 PM.
-                            </span>
-                        } />
-                </Form.Group>
-            </Row>
             <ThinSpacer />
             <div className="flex-row">
                 <IconButton
@@ -1043,7 +931,14 @@ export function CamperProfile() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
-    const { data: camperProfile, isSuccess, isLoading } = useCamperProfileQuery(authContext.attributes.sub);
+    const { data: camperProfile, isSuccess } = useCamperProfileQuery(authContext.attributes.sub);
+    const { data: camperYear } = useCamperYearQuery(camperProfile ?? null);
+
+    const appDeadlinePassed = useMemo(() => {
+        if(!camperYear) return true;
+        const appDeadline = createFromISO(camperYear.applicationDeadline);
+        return appDeadline.diffNow().toMillis() < 0;
+    }, [camperYear]);
 
     // Scroll to top when currentStep changes to show a form (steps 1-4)
     useEffect(() => {
@@ -1062,16 +957,20 @@ export function CamperProfile() {
 
     const handleCreateProfile = async () => {
         setCreatingProfile(true);
-        await createProfileMutation.mutateAsync({
+        createProfileMutation.mutate({
             userSub: authContext.attributes.sub ?? "",
+            identityId: authContext.identityId ?? "",
+            email: authContext.attributes.email ?? "",
+            campId: camperYear?.id ?? "",
         }, {
             onSuccess: (data) => {
                 queryClient.setQueryData(['camperProfile', authContext.attributes.sub], data);
+            },
+            onSettled: () => {
+                setCreatingProfile(false);
+                setCurrentStep((x) => x + 1);
             }
         });
-
-        setCreatingProfile(false);
-        setCurrentStep((x) => x + 1);
     }
 
     let ProfileView;
@@ -1085,6 +984,7 @@ export function CamperProfile() {
                     icon={faChevronRight}
                     onClick={() => setCurrentStep((x) => x + 1)}
                     position="right"
+                    disabled={appDeadlinePassed}
                 >
                     Continue Profile
                 </IconButton>
@@ -1099,6 +999,7 @@ export function CamperProfile() {
                     icon={faChevronRight}
                     onClick={() => setCurrentStep((x) => x + 1)}
                     position="right"
+                    disabled={appDeadlinePassed}
                 >
                     Edit Profile
                 </IconButton>
@@ -1114,6 +1015,7 @@ export function CamperProfile() {
                     onClick={handleCreateProfile}
                     position="right"
                     loading={creatingProfile}
+                    disabled={appDeadlinePassed}
                 >
                     Begin Profile
                 </SpinnerButton>

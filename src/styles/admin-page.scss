@@ -1,14 +1,23 @@
+@use "colors.module.scss" as colors;
+
 // Admin Dashboard Styles
 .admin-page {
     // padding: 20px;
 
     .admin-card {
         transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: 1px solid #dee2e6;
+        border: 1px solid colors.$primary;
+        
+        border-radius: 10px;
+        max-width: 600px;
+        box-shadow: 5px 5px 20px rgba(colors.$primary, 0.1);
+        
+
+        margin: 10px;
 
         &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
+            box-shadow: 5px 5px 10px rgba(colors.$primary, 0.3);
         }
 
         .card-body {
@@ -30,21 +39,9 @@
 }
 
 .camp-dashboard {
-    padding: 20px;
 
     .card {
         border: 1px solid #dee2e6;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-}
-
-.camper-table-view {
-    margin-top: 20px;
-
-    .table {
-        background-color: white;
-        border-radius: 8px;
-        overflow: hidden;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 }
@@ -83,4 +80,183 @@
     .badge {
         font-size: 0.75rem;
     }
+}
+
+.search-container {
+    margin-top: 10px;
+    max-width: 300px;
+    border-collapse: collapse;
+    border-radius: 20px;
+
+    input {
+        
+        font-size: 12px;
+    }
+}
+
+.filters-dropdown-container {
+
+    padding: 0px 10px 0px 10px;
+}
+
+.filter-dropdown-items {
+
+    
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    
+   
+
+    // display: flex;
+    // flex-direction: row;
+    // flex-wrap: wrap;
+    // gap: 5px;
+
+    
+}
+
+.filter-item {
+    padding-right: 10px;
+    text-wrap: nowrap;
+}
+
+.metrics-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    border: 1px solid rgba(colors.$primary, 0.2);
+    border-radius: 10px;
+    // box-shadow: 0 0 20px 0 rgba(colors.$primary, 0.3);
+    padding: 10px;
+}
+
+.metric-container {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: column;
+
+    .metric-text {
+        font-size: 10px;
+    }
+}
+
+.camp-actions {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    background-color: colors.$secondary-dark;
+    padding-left: 6px;
+    border: 1px solid colors.$primary;
+    border-radius: 10px 10px 0px 0px;
+    // border-collapse: collapse;
+
+    .btn {
+        border: none;
+        background-color: transparent;
+        padding: 5px;
+
+        &:hover {
+            background-color: rgba(colors.$secondary, 0.3);
+        }
+
+        &:disabled {
+            background-color: transparent;
+        }
+    }
+
+    .menu {
+        font-size: 12px;
+        padding: 8px;
+
+        .dropdown-item {
+            padding: 2px;
+        }
+    }
+}
+
+#admin-table {
+    flex-grow: 1;
+    font-size: 12px;
+    position: relative;
+    display: block;
+    overflow-x: scroll;
+    border-collapse: separate;
+    border-spacing: 0px;
+    border-right: 1px solid colors.$primary;
+    border-left: 1px solid colors.$primary;
+    border-bottom: 1px solid colors.$primary;
+
+    border-radius: 0px 0px 10px 10px;
+    scrollbar-width: thin;
+
+    .status-header {
+        text-align: center;
+        min-width: 20px;
+    }
+
+    .sort-icon {
+        position: absolute;
+        top: 0px;
+        text-align: center;
+    }
+
+    thead {
+        position: sticky;
+        top: 0px;
+        background-color: colors.$secondary-dark;
+        border: 1px solid colors.$primary;
+        // box-shadow: 0 0 20px 0 rgb(203, 203, 203);
+        
+        th {
+            background-color: colors.$secondary-dark;
+            cursor: pointer;
+            // position: sticky;
+            // top: 0px;
+            color: white;
+            border: 0.5px solid colors.$primary;
+            // border-collapse: collapse;
+            z-index: 10;
+            padding: 10px 5px 10px 5px;
+    
+        } 
+    }
+
+    
+
+    tbody {
+        // tr:nth-child(even) {
+        //     background-color: rgba(colors.$secondary, 0.1);
+        // }
+        
+        // tr:nth-child(odd) {
+        //     background-color: white;
+        // }
+        
+        tr.selected {
+            background-color: rgba(colors.$secondary, 0.3);
+        }
+
+    
+    }
+
+    td {
+        border: 0.5px solid colors.$secondary;
+        text-wrap: nowrap;
+        // border-collapse: collapse;
+        padding: 5px;
+        margin: 0;
+        // user-select: none;
+        //     -webkit-user-select: none;
+        //     -moz-user-select: none;
+        //     -ms-user-select: none;
+    }
+}
+
+.camp-settings-modal-body {
+
 }

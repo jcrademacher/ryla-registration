@@ -1,7 +1,5 @@
-import { Col, Row, Modal, Form, Button } from 'react-bootstrap';
-import { IconButton } from '../utils/button';
-import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
-import React, { useState, useCallback } from "react";
+import { Modal, Button } from 'react-bootstrap';
+import React from "react";
 import { SpinnerButton } from '../utils/button';
 
 interface ConfirmationModalProps {
@@ -11,9 +9,11 @@ interface ConfirmationModalProps {
     children?: React.ReactNode;
     onConfirm?: () => void;
     isLoading?: boolean;
+    confirmButtonText?: string;
+    confirmButtonVariant?: string;
 }
 
-export function ConfirmationModal({ show, onClose, title, children, onConfirm, isLoading }: ConfirmationModalProps) {
+export function ConfirmationModal({ show, onClose, title, children, onConfirm, isLoading, confirmButtonText, confirmButtonVariant }: ConfirmationModalProps) {
 
     return (
         <Modal show={show} size="lg" centered onHide={() => onClose()}>
@@ -24,11 +24,35 @@ export function ConfirmationModal({ show, onClose, title, children, onConfirm, i
                 {children}
             </Modal.Body>
             <Modal.Footer>
-                <Button variant="light" onClick={onClose}>Cancel</Button>
-                <SpinnerButton loading={!!isLoading} variant="primary" onClick={onConfirm}>Confirm</SpinnerButton>
+                <Button variant="light" onClick={(e) => { e.stopPropagation(); onClose(); }}>Cancel</Button>
+                <SpinnerButton 
+                    loading={!!isLoading} 
+                    variant={confirmButtonVariant ?? "primary"} 
+                    onClick={(e) => { e.stopPropagation(); onConfirm?.(); }}
+                >
+                    {confirmButtonText ?? "Confirm"}
+                </SpinnerButton>
             </Modal.Footer>
         </Modal>
     );
+}
+
+interface FormModalProps {
+    show: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+}
+
+export function FormModal({ show, onClose, title, children }: FormModalProps) {
+    return (
+        <Modal show={show} size="lg" centered onHide={() => onClose()}>
+            <Modal.Header closeButton>
+                <Modal.Title>{title}</Modal.Title>
+            </Modal.Header>
+            {children}
+        </Modal>
+    )
 }
 
 interface MultiStepViewProps {

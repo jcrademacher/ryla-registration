@@ -1,7 +1,9 @@
 import '../styles/navbar.scss';
 import { UseAuthenticator } from '@aws-amplify/ui-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Dropdown } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
+import { faUser } from '@fortawesome/free-solid-svg-icons';
 
 interface NavBarProps {
     signOut: UseAuthenticator["signOut"] | undefined;
@@ -52,6 +54,8 @@ export function NavRight({ children }: { children: React.ReactNode }) {
 
 export function NavBar({ signOut, title, children }: NavBarProps) {
     const navigate = useNavigate();
+
+
     return (
         <div id="nav">
             <span style={{ cursor: 'pointer' }} onClick={() => { navigate('/') }}>
@@ -59,6 +63,13 @@ export function NavBar({ signOut, title, children }: NavBarProps) {
             </span>
             {children}
             <NavRight>
+                <Button 
+                    id="profile-button" 
+                    onClick={() => { navigate('/profile') }}
+
+                >
+                    <FontAwesomeIcon icon={faUser} />
+                </Button>
                 <button id="signout-button" onClick={() => { if (signOut) signOut() }}>Sign Out</button>
             </NavRight>
         </div>

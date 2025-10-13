@@ -1,7 +1,6 @@
 import React, { useContext } from 'react';
 import { Navigate } from 'react-router';
 import { AuthContext } from '../App';
-import { NotFoundPage } from './NotFoundPage';
 import { RoleSelectionPage } from './RoleSelectionPage';
 import { isUserAdmin, isUserNew, isUserCamper, isUserRotarian } from '../api/auth';
 

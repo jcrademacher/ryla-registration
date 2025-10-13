@@ -1,8 +1,7 @@
 import React, { useState, useContext } from 'react';
-import { Form, Button, Alert, Card, Row, Col, Placeholder } from 'react-bootstrap';
+import { Form, Alert, Card, Row, Col, Placeholder } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { AuthContext } from '../App';
-import { useNavigate } from 'react-router';
 import { emitToast, ToastType } from '../utils/notifications';
 import { SpinnerButton } from '../utils/button';
 import { useRequestRotarianAccountMutation, useSetUserAsCamperMutation } from '../queries/mutations';
@@ -22,10 +21,8 @@ interface RoleSelectForm {
 }
 
 export const RoleSelectionPage: React.FC = () => {
-    const [showRotarianApproval, setShowRotarianApproval] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const navigate = useNavigate();
     // const selectUserRoleMutation = useSelectUserRoleMutation();
     const authContext = useContext(AuthContext);
     const queryClient = useQueryClient();
@@ -59,6 +56,7 @@ export const RoleSelectionPage: React.FC = () => {
             const handleAuthRefresh = async () => {
                 await refreshAuthSession(true);
                 queryClient.invalidateQueries({ queryKey: ["user", authContext.attributes.sub]});
+                queryClient.invalidateQueries({ queryKey: ["rotarianProfile", authContext.attributes.sub]});
             }
 
             // Redirect based on role

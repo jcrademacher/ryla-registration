@@ -5,7 +5,6 @@ import { storage } from './storage/resource';
 
 import * as iam from "aws-cdk-lib/aws-iam";
 import { listUsers } from "./functions/list-users/resource";
-import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 
 const backend = defineBackend({
     auth,

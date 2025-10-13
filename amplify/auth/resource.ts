@@ -8,8 +8,10 @@ import { listGroupsForUser } from '../functions/list-groups-for-user/resource';
 import { AUTH_GROUPS } from './utils';
 import { setUserGroup } from '../functions/set-user-group/resource';
 import { deleteUser } from '../functions/delete-user/resource';
+import { getUser } from '../functions/get-user/resource';
 
 // import { selectUserRole } from '../functions/select-user-role/resource';
+
 
 /**
  * Define and configure your auth resource
@@ -40,6 +42,7 @@ export const auth = defineAuth({
         allow.resource(listUsers).to(["manageUsers"]),
         allow.resource(listGroupsForUser).to(["listGroupsForUser"]),
         allow.resource(setUserGroup).to(["addUserToGroup", "removeUserFromGroup"]),
-        allow.resource(deleteUser).to(["deleteUser"])
+        allow.resource(deleteUser).to(["deleteUser"]),
+        allow.resource(getUser).to(["getUser"])
     ]
 });

@@ -27,13 +27,13 @@ const queryClient = new QueryClient({
             },
             onError: (error) => {
                 console.error("Mutation error:", error);
-                emitToast(`Error: ${error.message}`, ToastType.Error);
+                emitToast(error.message, ToastType.Error);
             }
         }
     },
     queryCache: new QueryCache({
         onError: (error) =>
-            emitToast(`Something went wrong: ${error.message}`, ToastType.Error),
+            emitToast(error.message, ToastType.Error),
 
     })
 });

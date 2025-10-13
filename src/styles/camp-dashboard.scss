@@ -1,0 +1,59 @@
+@use 'colors.module.scss' as colors;
+
+.camp-dashboard {
+
+
+    .add-camp-card {
+        transition: all 0.2s ease-in-out;
+        border: 2px dashed #dee2e6 !important;
+        background-color: #f8f9fa;
+
+        &:hover {
+            border-color: #6c757d !important;
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .card-body {
+            // min-height: 200px;
+        }
+    }
+
+    .camp-card {
+        transition: all 0.2s ease-in-out;
+        border: 1px solid #dee2e6;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-color: colors.$primary;
+        }
+
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .fw-bold {
+            font-weight: 600;
+        }
+
+        .text-muted {
+            font-size: 0.875rem;
+        }
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .fa-icon {
+        width: 16px;
+        height: 16px;
+    }
+} 
