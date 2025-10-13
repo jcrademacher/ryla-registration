@@ -21,32 +21,25 @@ import {
     RowSelectionState 
 } from '@tanstack/react-table';
 
-import { CamperProfileSchemaType } from '../../api/apiCamperProfile';
+import { CamperProfileSchemaType, CamperStatusSchemaType } from '../../api/apiCamperProfile';
 import { Placeholder } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faClockRotateLeft, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faClockRotateLeft, faTimes, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { formatPhoneNumber } from '../../utils/fields';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 // import { generateFakeCamperProfiles } from '../../utils/makeData';
-import { RotarianReviewSchemaType } from '../../api/apiRotarianReview';
 import { useParams } from 'react-router';
 import { useUpdateCamperProfileFilterStateMutation, useUpdateCamperProfileViewStateMutation } from '../../queries/adminMutations';
 import { useQueryClient } from '@tanstack/react-query';
 import { TableActions } from './TableActions';
 import { CampSettings } from './CampSettings';
+import { functionalQueryClient } from '../../main';
+import { useCamperStatusQuery, useRotarianReviewQuery, useRotaryClubQuery } from '../../queries/queries';
+import { PlaceholderElement } from '../../components/PlaceholderElement';
+import { RotarianReviewSchemaType } from '../../api/apiRotarianReview';
 
-import { useCamperStatusQuery } from '../../queries/queries';
 
-
-export type CamperProfileRowData = Omit<CamperProfileSchemaType,
-    'identityId' |
-    'campId' |
-    'rotarianReview' |
-    'camp' |
-    'owner'
-> & {
-    rotarianReview: Omit<RotarianReviewSchemaType, 'camper' | 'owner'> | null;
-}
+export type CamperProfileRowData = CamperProfileSchemaType;
 
 const columnHelper = createColumnHelper<CamperProfileRowData>();
 
@@ -81,7 +74,6 @@ function StatusColumn({ status, isLoading }: StatusColumnProps) {
     return content;
 }
 
-
 function StatusHeader({ title, helpText }: { title: string, helpText?: string }) {
     return (
         <OverlayTrigger
@@ -98,7 +90,6 @@ function StatusHeader({ title, helpText }: { title: string, helpText?: string })
     )
 }
 
-
 const columns = [
     columnHelper.accessor('profileComplete', {
         header: () => <StatusHeader title="P" helpText="Camper has completed basic information" />,
@@ -110,25 +101,37 @@ const columns = [
     }),
     columnHelper.accessor('rotarianReview', {
         header: () => <StatusHeader title="R" helpText="Rotarian review status" />,
-        cell: (props) => <StatusColumn status={props.getValue()?.review} />,
+        cell: (props) => {
+            const { data: rotarianReview, isPending: isPendingRotarianReview } = useRotarianReviewQuery(props.row.original.userSub);
+            
+            return <StatusColumn status={rotarianReview?.review} isLoading={isPendingRotarianReview} />;
+        },
         filterFn: (row, _, filterValue) => {
-            if (filterValue.length === 0) {
+
+            const rotarianReview = functionalQueryClient.getQueryData(['rotarianReview', row.original.userSub]) as RotarianReviewSchemaType | null | undefined;
+            
+            if(filterValue.length === 0) {
                 return true;
             }
             else {
-                return filterValue.includes(row.original.rotarianReview?.review ?? "");
+                return filterValue.includes(rotarianReview?.review ?? "");
             }
+            // return true;
         }
 
     }),
     columnHelper.accessor('documentsComplete', {
         header: () => {
-            return <StatusHeader title="D" helpText="Camper has completed all required documents (including med forms)" />;
+            return <StatusHeader title="D" helpText="Camper has completed all required documents (including mailed forms)" />;
         },
         cell: (props) => {
             const { data: camperStatus, isLoading: isCamperStatusLoading } = useCamperStatusQuery(props.row.original.userSub);
             return <StatusColumn status={camperStatus?.documentsComplete} isLoading={isCamperStatusLoading} />;
         },
+        filterFn: (row, _, filterValue) => {
+            const camperStatus = functionalQueryClient.getQueryData(['camperStatus', row.original.userSub]) as CamperStatusSchemaType | null | undefined;
+            return camperStatus?.documentsComplete === filterValue;
+        }
     }),
     columnHelper.accessor('attendanceConfirmations', {
         header: () => <StatusHeader title="C" helpText="Camper has confirmed attendance" />,
@@ -184,8 +187,18 @@ const columns = [
     columnHelper.accessor('highSchool', {
         header: 'High School',
     }),
-    columnHelper.accessor('sponsoringRotaryClub', {
+    columnHelper.accessor('rotaryClubId', {
         header: 'Sponsoring Rotary Club',
+        cell: (props) => {
+            const { data: rotaryClub, isPending: isPendingRotaryClub, isError: isErrorRotaryClub } = useRotaryClubQuery(props.row.original.rotaryClubId);
+            if(isErrorRotaryClub) {
+                return <div className="text-danger">
+                    <FontAwesomeIcon icon={faXmark} className="me-1" />
+                    Failed
+                </div>;
+            }
+            return <PlaceholderElement isLoading={isPendingRotaryClub} props={{ xs: 7 }}>{rotaryClub?.name}</PlaceholderElement>;
+        }
     }),
     columnHelper.accessor('guidanceCounselorName', {
         header: 'Guidance Counselor Name',

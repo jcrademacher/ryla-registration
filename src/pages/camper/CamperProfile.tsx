@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { MultiStepView } from "../../components/modals";
 import { IconButton } from "../../utils/button";
-import { Form, Row, Col } from "react-bootstrap";
+import { Form, Row, Col, Spinner } from "react-bootstrap";
 import { faChevronRight, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { GENDER_OPTIONS, PHONE_REGEX, EMAIL_REGEX } from "../constants";
 import { emitToast, ToastType } from "../../utils/notifications";
@@ -18,6 +18,7 @@ import { ThinSpacer } from "../../components/ThinSpacer";
 import { SpinnerButton } from "../../utils/button";
 import { createEDT, createFromISO } from "../../utils/datetime";
 import { DateTime } from "luxon";
+import { useListRotaryClubsQuery } from "../../queries/queries";
 
 function nullifyEmptyStrings<T extends object>(obj: T): T {
     // Get all keys of the object
@@ -597,7 +598,7 @@ type CamperUserProfileForm3Type = {
 const mapSchemaToForm3 = (schema: CamperProfileSchemaType): CamperUserProfileForm3Type => {
 
     return {
-        sponsoringRotaryClub: schema.sponsoringRotaryClub ?? null,
+        sponsoringRotaryClub: schema.rotaryClubId ?? null,
         highSchool: schema.highSchool ?? null,
         guidanceCounselorName: schema.guidanceCounselorName ?? null,
         guidanceCounselorEmailAddress: schema.guidanceCounselorEmail ?? null,
@@ -609,7 +610,7 @@ const mapFormToSchema3 = (form: CamperUserProfileForm3Type, userSub?: string): U
 
     return {
         userSub: userSub ?? "",
-        sponsoringRotaryClub: form.sponsoringRotaryClub,
+        rotaryClubId: form.sponsoringRotaryClub,
         highSchool: form.highSchool,
         guidanceCounselorName: form.guidanceCounselorName,
         guidanceCounselorEmail: form.guidanceCounselorEmailAddress,
@@ -617,9 +618,11 @@ const mapFormToSchema3 = (form: CamperUserProfileForm3Type, userSub?: string): U
     }
 }
 
-import { ROTARY_CLUBS } from '../constants';
+// import { ROTARY_CLUBS } from '../constants';
 
 const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) => {
+    const { data: rotaryClubs, isPending: isRotaryClubsPending } = useListRotaryClubsQuery();
+
     const {
         register,
         handleSubmit,
@@ -659,19 +662,30 @@ const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperProfile: 
                         <Form.Label>
                             Sponsoring Rotary Club<Req />
                         </Form.Label>
+                        <div className="d-flex align-items-center">
 
-                        <Form.Select
-                            {...register("sponsoringRotaryClub", { required: true })}
-                            isInvalid={!!errors.sponsoringRotaryClub}
-                            defaultValue=""
-                        >
-                            <option disabled value="">Select...</option>
-                            {ROTARY_CLUBS.map((club) => (
-                                <option key={club} value={club}>
-                                    {club}
+                            <Form.Select
+                                {...register("sponsoringRotaryClub", { required: true })}
+                                isInvalid={!!errors.sponsoringRotaryClub}
+                                defaultValue=""
+                                disabled={isRotaryClubsPending}
+                            >
+                                <option disabled value="">
+                                    {isRotaryClubsPending ? "Loading clubs..." : "Select..."}
                                 </option>
-                            ))}
-                        </Form.Select>
+                                {rotaryClubs?.map((club) => (
+                                    <option key={club.id} value={club.id}>
+                                        {club.name}
+                                    </option>
+                                ))}
+                            </Form.Select>
+                            {isRotaryClubsPending && (
+
+                                <Spinner animation="border" size="sm" />
+                            )}
+                        </div>
+
+
                         <Form.Control.Feedback type="invalid">
                             Please select a sponsoring Rotary Club.
                         </Form.Control.Feedback>
@@ -844,7 +858,7 @@ function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperProfile: 
             onError: () => setSaving(false),
         });
 
-        
+
     }
 
 
@@ -935,7 +949,7 @@ export function CamperProfile() {
     const { data: camperYear } = useCamperYearQuery(camperProfile ?? null);
 
     const appDeadlinePassed = useMemo(() => {
-        if(!camperYear) return true;
+        if (!camperYear) return true;
         const appDeadline = createFromISO(camperYear.applicationDeadline);
         return appDeadline.diffNow().toMillis() < 0;
     }, [camperYear]);

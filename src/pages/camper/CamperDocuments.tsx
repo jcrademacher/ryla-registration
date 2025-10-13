@@ -46,14 +46,13 @@ const DocumentComponent: React.FC<DocumentComponentProps> = ({
                 onProgress
             }, {
                 onSuccess: () => {
-                    queryClient.invalidateQueries({ queryKey: ['camperDocuments', camperProfile.userSub] });
+                    queryClient.invalidateQueries({ queryKey: ['camperDocument', camperProfile.userSub, template.id] });
                     emitToast("Document uploaded", ToastType.Success);
                 },
                 onSettled: () => {
                     onSettled?.();
                 },
                 onError: (error) => {
-                    console.error("Mutation error:", error);
                     emitToast(`Error uploading document: ${error.message}`, ToastType.Error);
                 }
             });
@@ -136,7 +135,7 @@ export function CamperImportantDocuments() {
 
     const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
     const { data: camp } = useCamperYearQuery(camperProfile ?? null);
-    const { data: documentTemplates, isPending: isLoadingDocumentTemplates } = useDocumentTemplatesByCampQuery(camp);
+    const { data: documentTemplates, isPending: isLoadingDocumentTemplates } = useDocumentTemplatesByCampQuery(camp?.id);
 
     // Separate documents into three categories
     const viewOnlyDocuments = documentTemplates?.filter(doc => doc.type === "viewonly") || [];
@@ -149,11 +148,6 @@ export function CamperImportantDocuments() {
                 <p className="mb-2">
                     <strong>Please review the following documents & forms to complete your registration for RYLA.</strong>
                 </p>
-                {/* <ul className="mb-0">
-                <li><strong>Information Documents:</strong> For your reference only - no action required</li>
-                <li><strong>Required Documents:</strong> Must be completed to finalize your registration</li>
-                <li><strong>Optional Documents:</strong> Recommended but not required</li>
-            </ul> */}
             </div>
 
             {/* View Only Documents Section */}

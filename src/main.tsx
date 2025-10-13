@@ -14,7 +14,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { emitToast, ToastType } from "./utils/notifications.tsx";
 
 
-const queryClient = new QueryClient({
+export const functionalQueryClient = new QueryClient({
     defaultOptions: {
         queries: {
             networkMode: 'always', // or 'offlineFirst' or 'always'
@@ -22,8 +22,8 @@ const queryClient = new QueryClient({
         },
         mutations: {
             networkMode: 'always',
-            onSuccess: (data) => {
-                console.log("Mutation success, data:", data);
+            onSuccess: () => {
+                // console.log("Mutation success, data:", data);
             },
             onError: (error) => {
                 console.error("Mutation error:", error);
@@ -40,7 +40,7 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
-        <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={functionalQueryClient}>
             <BrowserRouter>
                 <App />
             </BrowserRouter>

@@ -1,5 +1,4 @@
 import { useMutation } from "@tanstack/react-query";
-import { emitToast, ToastType } from "../utils/notifications";
 import { 
     setUserAsCamper, 
     createCamperProfile, 
@@ -30,18 +29,6 @@ export function useUpdateProfileMutation() {
             else {
                 return updateCamperProfile(data);
             }
-        },
-        onSuccess: (data) => {
-            console.log("Mutation success, data:", data);
-
-        },
-        onError: (error) => {
-            console.error("Mutation error:", error);
-            emitToast(`Error updating camper profile: ${error.message}`, ToastType.Error);
-        },
-        onMutate: () => {
-            // const currentState = state;
-            // console.log("Mutation starting with currentState:", currentState);
         }
     });
 }
@@ -62,34 +49,20 @@ export function useCreateProfileMutation() {
             else {
                 return createCamperProfile(data);
             }
-        },
-        onSuccess: (data) => {
-            console.log("Mutation success, data:", data);
-        },
-        onError: (error) => {
-            console.error("Mutation error:", error);
-            emitToast(`Error updating camper profile: ${error.message}`, ToastType.Error);
         }
     });
 }
 
-export function useUploadCamperApplicationMutation(onProgress?: (event: TransferProgressEvent) => void) {
+export function useUploadCamperApplicationMutation() {
     return useMutation({
         mutationKey: ['uploadCamperApplication'],
-        mutationFn: ({ file, userSub }: { file: File, userSub: string | undefined }) => {
+        mutationFn: ({ file, userSub, onProgress }: { file: File, userSub: string | undefined, onProgress?: (event: TransferProgressEvent) => void }) => {
             if (!userSub) {
                 throw new Error("User ID missing. Check auth flow.");
             }
             else {
                 return uploadCamperApplication(userSub, file, onProgress);
             }
-        },
-        onSuccess: (data) => {
-            console.log("Mutation success, data:", data);
-        },
-        onError: (error) => {
-            console.error("Mutation error:", error);
-            emitToast(`Error uploading camper application: ${error.message}`, ToastType.Error);
         }
     });
 }
@@ -103,13 +76,6 @@ export function useRequestRotarianAccountMutation() {
             }
             
             return createRotarianProfile(data);
-        },
-        onSuccess: (data) => {
-            console.log("Mutation success, data:", data);
-        },
-        onError: (error) => {
-            console.error("Mutation error:", error);
-            emitToast(`Error creating rotarian profile: ${error.message}`, ToastType.Error);
         }
     });
 }
@@ -118,9 +84,6 @@ export function useUpdateRotarianProfileMutation() {
     return useMutation({
         mutationKey: ['updateRotarianProfile'],
         mutationFn: (data: UpdateRotarianProfileSchemaType) => {
-            if (!data.userSub) {
-                throw new Error("User sub missing. Check auth flow.");
-            }
 
             return updateRotarianProfile(data);
         }
@@ -199,13 +162,6 @@ export function useDeleteUserMutation() {
 
             console.log("Deleting user");
             return deleteUser(userSub);
-        },
-        onSuccess: (data) => {
-            console.log("Mutation success, data:", data);
-        },
-        onError: (error) => {
-            console.error("Mutation error:", error);
-            emitToast(`Error deleting user: ${error.message}`, ToastType.Error);
         }
     });
 }

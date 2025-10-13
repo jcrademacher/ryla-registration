@@ -10,11 +10,13 @@ import { Modal } from 'react-bootstrap';
 import { SpinnerButton } from '../../utils/button';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { useUpdateCampMutation } from '../../queries/adminMutations';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQueries } from '@tanstack/react-query';
 import { useCampQuery, useListCampsQuery } from '../../queries/adminQueries';
 import { Table as TanstackTable } from '@tanstack/table-core';
 import { CamperProfileRowData } from './CampManagementPage';
 import { ThinSpacer } from '../../components/ThinSpacer';
+import { RotarianReviewSchemaType } from '../../api/apiRotarianReview';
+import { CamperStatusSchemaType } from '../../api/apiCamperProfile';
 
 interface CampMetrics {
     profileCompleteCampers: number;
@@ -197,18 +199,44 @@ function CampMetrics({ table }: { table: TanstackTable<CamperProfileRowData> }) 
 
     const allData = useMemo(() => table.getCoreRowModel().rows.map(row => row.original), [table.getCoreRowModel().rows]);
 
+    const rotarianReviews = useQueries({
+        queries: allData.map(camper => ({
+            queryKey: ['rotarianReview', camper.userSub]
+        }))
+    })
+
+    const camperStatuses = useQueries({
+        queries: allData.map(camper => ({
+            queryKey: ['camperStatus', camper.userSub]
+        }))
+    })
+
 
     // const queryClient = useQueryClient();
 
     // const rotarianReviews = useMemo(() => queryClient.getQueryCache().findAll({ queryKey: ['rotarianReview'] }), [isPending]);
     // console.log(rotarianReviews);
+    const queryClient = useQueryClient();
 
     const numProfiles = useMemo(() => allData?.length ?? 0, [allData]);
     const numProfilesComplete = useMemo(() => allData?.filter(camper => camper.profileComplete).length ?? 0, [allData]);
     const numApplicationsSubmitted = useMemo(() => allData?.filter(camper => camper.applicationComplete).length ?? 0, [allData]);
-    const numAcceptedCampers = useMemo(() => allData?.filter(camper => camper.rotarianReview?.review === "APPROVED").length ?? 0, [allData]);
-    const numRejectedCampers = useMemo(() => allData?.filter(camper => camper.rotarianReview?.review === "REJECTED").length ?? 0, [allData]);
-    const numDocumentsSubmitted = useMemo(() => allData?.filter(camper => camper.documentsComplete).length ?? 0, [allData]);
+
+    const numAcceptedCampers = useMemo(() => allData?.filter(camper => {
+        const rotarianReview = queryClient.getQueryData(['rotarianReview', camper.userSub]) as RotarianReviewSchemaType | null | undefined;
+        return rotarianReview?.review === "APPROVED";
+    }).length ?? 0, [allData, rotarianReviews]);
+
+    const numRejectedCampers = useMemo(() => allData?.filter(camper => {
+        const rotarianReview = queryClient.getQueryData(['rotarianReview', camper.userSub]) as RotarianReviewSchemaType | null | undefined;
+        return rotarianReview?.review === "REJECTED";
+    }).length ?? 0, [allData, rotarianReviews]);
+
+    const numDocumentsSubmitted = useMemo(() => allData?.filter(camper => { 
+        const status = queryClient.getQueryData(['camperStatus', camper.userSub]) as CamperStatusSchemaType | null | undefined;
+        return status?.documentsComplete;
+    }).length ?? 0, [allData, camperStatuses]);
+
     const numConfirmedCampers = useMemo(() => allData?.filter(({ attendanceConfirmations: a }) => a ? a > 0 : false).length ?? 0, [allData]);
 
 
@@ -254,7 +282,7 @@ function CampMetrics({ table }: { table: TanstackTable<CamperProfileRowData> }) 
                     <FontAwesomeIcon icon={faFileAlt} className="me-1" />
                     <span>{numDocumentsSubmitted}</span>
                 </div>
-                <div className="metric-text text-muted">Documents Submitted</div>
+                <div className="metric-text text-muted">Documents Completed</div>
             </div>
             <div className="metric-container">
                 <div className="d-flex align-items-center justify-content-center">

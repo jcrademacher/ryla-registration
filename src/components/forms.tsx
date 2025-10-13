@@ -65,6 +65,7 @@ export function FileInputGroup({ filepath, submitHandler, isPending }: FileInput
     if (filepath && !isResubmitting && !isPending) {
         return <small className="text-muted"> 
             <a href={urlToUploadedDocument} target="_blank">{filepath?.split("/").pop()}</a> (<a href="#" onClick={() => setIsResubmitting(true)}>Replace</a>)
+            <br/>
         </small>;
     }
     return (

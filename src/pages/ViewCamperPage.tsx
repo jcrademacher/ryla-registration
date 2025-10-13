@@ -1,22 +1,56 @@
 import { useParams } from "react-router";
-import { useCamperProfileQuery, useRotarianReviewQuery, useGetUserEmailQuery, useUrlToDocumentQuery, useCamperStatusQuery } from "../queries/queries";
+import {
+    useCamperProfileQuery,
+    useRotarianReviewQuery, useGetUserEmailQuery, useUrlToDocumentQuery, useCamperStatusQuery, useRotaryClubQuery, useDocumentTemplatesByCampQuery,
+    useCamperDocumentQuery
+} from "../queries/queries";
 import { formatPhoneNumber, getCamperAddress, getCamperBirthdate, getCamperName } from "../utils/fields";
 import { Table } from "react-bootstrap";
 import { ThinSpacer } from "../components/ThinSpacer";
 import { PlaceholderElement } from "../components/PlaceholderElement";
 import { useMemo } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faXmark, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { DocumentTemplateSchemaType } from "../api/apiDocuments";
+
+const FileDisplay = ({ camperUserSub, template }: { camperUserSub?: string | null, template: DocumentTemplateSchemaType }) => {
+    const { data: thisDocument, isPending: isPendingThisDocument } = useCamperDocumentQuery(camperUserSub, template.id);
+    const { data: url } = useUrlToDocumentQuery(thisDocument?.filepath);
+
+    const filename = useMemo(() => thisDocument?.filepath?.split("/").pop(), [thisDocument?.filepath]);
+
+    return (
+        <tr>
+            <td><b>{template.name}{template.required ? " (Required)" : ""}:</b></td>
+            <td>
+                <PlaceholderElement props={{ xs: 7 }} isLoading={isPendingThisDocument}>
+                    {filename ?
+                        <a target="_blank" href={url}>{filename}</a>
+                        :
+                        (template.type === "mail" && thisDocument?.received ? 
+                            <div className="text-success"><FontAwesomeIcon icon={faCheck} className="me-1" />Received</div> 
+                            : 
+                            <div className="text-danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Missing</div>)}
+                </PlaceholderElement>
+            </td>
+        </tr>
+    )
+}
 
 export function ViewCamperPage() {
     const { camperSub } = useParams();
 
-    const { data: camperProfile, isLoading: isCamperProfileLoading } = useCamperProfileQuery(camperSub);
+    const { data: camperProfile, isPending: isPendingCamperProfile } = useCamperProfileQuery(camperSub);
     const { data: rotarianReview } = useRotarianReviewQuery(camperSub);
-    const { data: userEmail, isLoading: isUserEmailLoading } = useGetUserEmailQuery(camperSub);
+    const { data: userEmail, isPending: isUserEmailPending } = useGetUserEmailQuery(camperSub);
     const { data: camperStatus } = useCamperStatusQuery(camperSub);
+    const { data: rotaryClub, isPending: isRotaryClubPending } = useRotaryClubQuery(camperProfile?.rotaryClubId);
+
+    const { data: documentTemplates } = useDocumentTemplatesByCampQuery(camperProfile?.campId);
 
     const documentsComplete = camperStatus?.documentsComplete;
 
-    const { 
+    const {
         data: urlToCamperApplication
     } = useUrlToDocumentQuery(camperProfile?.applicationFilepath);
     // console.log(Object.keys(camperProfile ?? {}));
@@ -53,15 +87,35 @@ export function ViewCamperPage() {
             <Table className="camper-information-table">
                 <tbody>
                     <tr>
-                        <td><b>Application File:</b></td>
+                        <td><b>Application ({rotaryClub?.requiresApplication ? "Required" : "Optional"}):</b></td>
                         <td>
-                            <PlaceholderElement props={{ xs: 7 }} isLoading={isCamperProfileLoading}>
-                                {appFilename ? <a target="_blank" href={urlToCamperApplication}>{appFilename}</a> : "File not found"}
+                            <PlaceholderElement props={{ xs: 7 }} isLoading={isPendingCamperProfile}>
+                                {appFilename ?
+                                    <a target="_blank" href={urlToCamperApplication}>{appFilename}</a>
+                                    :
+                                    <div className="text-danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Missing</div>}
                             </PlaceholderElement>
                         </td>
                     </tr>
 
-                    <tr><td colSpan={2}><ThinSpacer/></td></tr>
+                    {documentTemplates?.map(template => (
+                        <FileDisplay 
+                            key={template.id} 
+                            camperUserSub={camperSub} 
+                            template={template} 
+                        />
+                    ))}
+                    
+
+                    {/* <FileDisplay
+                        title="Letter of Recommendation" 
+                        filename={camperProfile?.letterOfRecommendationFilepath?.split("/").pop()} 
+                        url={urlToLetterOfRecommendation} 
+                        isPending={isCamperProfilePending} 
+                    /> */}
+
+
+                    <tr><td colSpan={2}><ThinSpacer /></td></tr>
 
                     <tr>
                         <td><b>Name:</b></td>
@@ -70,7 +124,7 @@ export function ViewCamperPage() {
                     <tr>
                         <td><b>Email:</b></td>
                         <td>
-                            <PlaceholderElement props={{ xs: 7 }}isLoading={isUserEmailLoading}>
+                            <PlaceholderElement props={{ xs: 7 }} isLoading={isUserEmailPending}>
                                 <a href={`mailto:${userEmail}`}>{userEmail}</a>
                             </PlaceholderElement>
                         </td>
@@ -97,10 +151,14 @@ export function ViewCamperPage() {
                     </tr>
                     <tr>
                         <td><b>Sponsoring Rotary Club:</b></td>
-                        <td>{camperProfile?.sponsoringRotaryClub}</td>
+                        <td>
+                            <PlaceholderElement props={{ xs: 7 }} isLoading={isRotaryClubPending}>
+                                {rotaryClub?.name}
+                            </PlaceholderElement>
+                        </td>
                     </tr>
 
-                    <tr><td colSpan={2}><ThinSpacer/></td></tr>
+                    <tr><td colSpan={2}><ThinSpacer /></td></tr>
 
                     <tr>
                         <td><b>Parent 1:</b></td>
@@ -139,7 +197,7 @@ export function ViewCamperPage() {
                         <td>{camperProfile?.emergencyContactRelationship}</td>
                     </tr>
 
-                    <tr><td colSpan={2}><ThinSpacer/></td></tr>
+                    <tr><td colSpan={2}><ThinSpacer /></td></tr>
 
                     <tr>
                         <td><b>Guidance Counselor Name:</b></td>
@@ -162,7 +220,7 @@ export function ViewCamperPage() {
                         <td>{camperProfile?.dietaryRestrictionsNotes}</td>
                     </tr>
 
-                    
+
                 </tbody>
             </Table>
         </div>

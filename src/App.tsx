@@ -20,6 +20,7 @@ import { CampDashboard } from "./pages/CampDashboard";
 import { CampManagementPage } from "./pages/camp/CampManagementPage";
 import { ViewCamperPage } from "./pages/ViewCamperPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { RotaryClubManagementPage } from "./pages/RotaryClubManagementPage";
 
 function App() {
     return (
@@ -102,6 +103,11 @@ function AuthView({ signOut, user }: AuthViewProps) {
                                     <Route path="camps/:campId/*" element={
                                         <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
                                             <CampManagementPage />
+                                        </ProtectedRoute>
+                                    } />
+                                    <Route path="rotary-clubs" element={
+                                        <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                            <RotaryClubManagementPage />
                                         </ProtectedRoute>
                                     } />
                             </Route>

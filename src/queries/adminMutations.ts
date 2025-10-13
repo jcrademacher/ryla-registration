@@ -12,6 +12,7 @@ import { createFromISO } from "../utils/datetime";
 import { DateTime } from "luxon";
 import { TransferProgressEvent } from "aws-amplify/storage";
 import { CreateDocumentTemplateSchemaType, deleteDocumentTemplate, DocumentTemplateSchemaType, uploadDocumentTemplate } from "../api/apiDocuments";
+import { createRotaryClub, CreateRotaryClubSchemaType, UpdateRotaryClubSchemaType, updateRotaryClub } from "../api/apiRotaryClub";
 
 function checkForExistingApplicationsOpen(thisCamp: CampSchemaType | UpdateCampSchemaType | CreateCampSchemaType, otherCamps: CampSchemaType[] | null | undefined) {
     const now = DateTime.now();
@@ -111,6 +112,24 @@ export function useDeleteDocumentTemplateMutation() {
         mutationKey: ['deleteDocumentTemplate'],
         mutationFn: async (doc: DocumentTemplateSchemaType) => {
             return deleteDocumentTemplate(doc);
+        }
+    });
+}
+
+export function useCreateRotaryClubMutation() {
+    return useMutation({
+        mutationKey: ['createRotaryClub'],
+        mutationFn: async (rotaryClub: CreateRotaryClubSchemaType) => {
+            return createRotaryClub(rotaryClub);
+        }
+    });
+}
+
+export function useUpdateRotaryClubMutation() {
+    return useMutation({
+        mutationKey: ['updateRotaryClub'],
+        mutationFn: async (rotaryClub: UpdateRotaryClubSchemaType) => {
+            return updateRotaryClub(rotaryClub);
         }
     });
 }

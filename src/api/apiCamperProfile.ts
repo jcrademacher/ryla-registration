@@ -7,15 +7,12 @@ import { listCamperDocuments, listDocumentTemplatesByCamp } from "./apiDocuments
 export type CreateCamperProfileSchemaType = Schema['CamperProfile']['createType'];
 export type UpdateCamperProfileSchemaType = Schema['CamperProfile']['updateType'];
 export type CamperProfileSchemaType = Schema['CamperProfile']['type'];
-export type CamperProfileEagerSchemaType = Omit<CamperProfileSchemaType, "rotarianReview"> & {
-    rotarianReview: RotarianReviewSchemaType | null;
-};
 
-export async function listCamperProfilesByRotaryClub(rotaryClub: string | null): Promise<CamperProfileSchemaType[] | null> {
+export async function listCamperProfilesByRotaryClub(rotaryClubId?: string | null): Promise<CamperProfileSchemaType[] | null> {
     let retval;
-    if (rotaryClub) {
-        retval = await client.models.CamperProfile.listCamperProfileBySponsoringRotaryClub({
-            sponsoringRotaryClub: rotaryClub
+    if (rotaryClubId) {
+        retval = await client.models.CamperProfile.listCamperProfileByRotaryClubId({
+            rotaryClubId: rotaryClubId
         }, { authMode: "userPool" });
     }
     else {
@@ -40,31 +37,15 @@ export function observeCamperProfilesByCamp(campId: string, updateFn: (data: Cam
     });
 }
 
-export async function listCamperProfilesByCamp(campId: string): Promise<CamperProfileEagerSchemaType[] | null> {
+export async function listCamperProfilesByCamp(campId: string): Promise<CamperProfileSchemaType[] | null> {
     const camp = await getCamp(campId);
     const profiles = await camp?.camperProfiles({
         limit: 300
     });
 
-    if (profiles) {
-        checkErrors(profiles.errors);
+    checkErrors(profiles?.errors);
 
-        let retval: CamperProfileEagerSchemaType[] = [];
-
-        for (const camper of profiles.data) {
-            const review = await camper.rotarianReview();
-            checkErrors(review.errors);
-            
-            retval.push({
-                ...camper,
-                rotarianReview: review.data
-            });
-
-        }
-
-        return retval;
-    }
-    return null;
+    return profiles?.data ?? null;
 }
 
 export async function listRotarianReviewsByCamp(campId: string) {
@@ -133,27 +114,21 @@ export async function getCamperYear(camperProfile: CamperProfileSchemaType): Pro
     return retval.data ?? null;
 }
 
-interface CamperStatusSchemaType {
+export type CamperStatusSchemaType = {
     profileComplete: boolean;
     applicationComplete: boolean;
     documentsComplete: boolean;
 }
 
-export async function getCamperStatus(camperUserSub: string): Promise<CamperStatusSchemaType> {
+export async function getCamperStatus(camperProfile: CamperProfileSchemaType): Promise<CamperStatusSchemaType> {
     const retval = {
         profileComplete: false,
         applicationComplete: false,
         documentsComplete: false,
-    };
-
-    const camperProfile = await getCamperProfile(camperUserSub);
-
-    if(!camperProfile) {
-        return retval;
     }
 
     const templates = await listDocumentTemplatesByCamp(camperProfile.campId);
-    const query = await listCamperDocuments(camperUserSub);
+    const query = await listCamperDocuments(camperProfile);
 
     if(query) {
         retval.documentsComplete = 

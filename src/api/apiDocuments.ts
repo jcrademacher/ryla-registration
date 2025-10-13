@@ -2,6 +2,7 @@ import { getProperties, list, TransferProgressEvent, uploadData } from 'aws-ampl
 import { getUrl, remove } from 'aws-amplify/storage';
 import { client, checkErrors } from '.';
 import { Schema } from '../../amplify/data/resource';
+import { CamperProfileSchemaType } from './apiCamperProfile';
 
 export type DocumentTemplateSchemaType = Schema['DocumentTemplate']['type'];
 export type CreateDocumentTemplateSchemaType = Schema['DocumentTemplate']['createType'];
@@ -224,6 +225,10 @@ export async function uploadCamperDocument(
 
     let result;
     if(file) {
+        if(file.size > 1000000) {
+            throw new Error("File size is too large (Maximum file size is 1MB)");
+        }
+        
         if(existingEntry?.filepath) {
             console.log("deleting existing file", existingEntry.filepath);
             deleteDocument(existingEntry.filepath);
@@ -261,10 +266,8 @@ export async function getCamperDocument(camperUserSub: string, templateId: strin
     return retval.data;
 }
 
-export async function listCamperDocuments(camperUserSub: string): Promise<CamperDocumentSchemaType[] | null> {
-    const retval = await client.models.CamperProfile.get({ userSub: camperUserSub }, { authMode: "userPool" });
-    checkErrors(retval.errors);
-    const documents = await retval.data?.documents();
+export async function listCamperDocuments(camperProfile: CamperProfileSchemaType): Promise<CamperDocumentSchemaType[] | null> {
+    const documents = await camperProfile.documents();
     checkErrors(documents?.errors);
 
     return documents?.data ?? null;

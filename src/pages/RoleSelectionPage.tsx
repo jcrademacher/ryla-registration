@@ -1,13 +1,12 @@
 import React, { useState, useContext } from 'react';
-import { Form, Alert, Card, Row, Col, Placeholder } from 'react-bootstrap';
+import { Form, Alert, Card, Row, Col, Placeholder, Spinner } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { AuthContext } from '../App';
 import { emitToast, ToastType } from '../utils/notifications';
 import { SpinnerButton } from '../utils/button';
 import { useRequestRotarianAccountMutation, useSetUserAsCamperMutation } from '../queries/mutations';
 import { refreshAuthSession } from '../api/auth';
-import { ROTARY_CLUBS } from './constants';
-import { useRotarianProfileQuery } from '../queries/queries';
+import { useRotarianProfileQuery, useListRotaryClubsQuery } from '../queries/queries';
 import { useQueryClient } from '@tanstack/react-query';
 // import { useSelectUserRoleMutation } from '../queries/mutations';
 
@@ -17,7 +16,7 @@ interface RoleSelectForm {
     role: Role;
     firstName: string | null;
     lastName: string | null;
-    rotaryClub: string | null;
+    rotaryClubId: string | null;
 }
 
 export const RoleSelectionPage: React.FC = () => {
@@ -30,6 +29,7 @@ export const RoleSelectionPage: React.FC = () => {
     const requestRotarianAccount = useRequestRotarianAccountMutation();
     const setUserAsCamper = useSetUserAsCamperMutation();
     const { data: rotarianProfile, isLoading } = useRotarianProfileQuery(authContext.attributes.sub);
+    const { data: rotaryClubs, isPending: isPendingRotaryClubs } = useListRotaryClubsQuery();
 
     const FirstRequestView = () => {
         const {
@@ -66,7 +66,7 @@ export const RoleSelectionPage: React.FC = () => {
                     email: authContext.attributes.email ?? '',
                     firstName: data.firstName,
                     lastName: data.lastName,
-                    rotaryClub: data.rotaryClub
+                    rotaryClubId: data.rotaryClubId
                 }, {
                     onSuccess: async () => await handleAuthRefresh()
                 });
@@ -154,18 +154,28 @@ export const RoleSelectionPage: React.FC = () => {
                             </div>
                             <div className="mb-3">
                                 <Form.Label htmlFor="rotaryClub">Rotary Club</Form.Label>
+                                <div className="d-flex align-items-center">
+
                                 <Form.Select
-                                    {...register("rotaryClub", { required: true })}
-                                    isInvalid={!!errors.rotaryClub}
+                                    {...register("rotaryClubId", { required: true })}
+                                    isInvalid={!!errors.rotaryClubId}
                                     defaultValue=""
+                                    disabled={isPendingRotaryClubs}
                                 >
-                                    <option disabled value="">Select...</option>
-                                    {ROTARY_CLUBS.map((club) => (
-                                        <option key={club} value={club}>
-                                            {club}
+                                    <option disabled value="">
+                                        {isPendingRotaryClubs ? "Loading clubs..." : "Select..."}
+                                    </option>
+                                    {rotaryClubs?.map((club) => (
+                                        <option key={club.id} value={club.id}>
+                                            {club.name}
                                         </option>
                                     ))}
                                 </Form.Select>
+                                {isPendingRotaryClubs && (
+
+                                    <Spinner animation="border" size="sm" />
+                                )}
+                            </div>
                             </div>
                         </div>
                     )}

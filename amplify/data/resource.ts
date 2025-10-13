@@ -48,7 +48,8 @@ const CamperProfileModel = {
     emergencyContactName: a.string(),
     emergencyContactPhone: a.phone(),
     emergencyContactRelationship: a.string(),
-    sponsoringRotaryClub: a.id(),
+    rotaryClubId: a.id(),
+    rotaryClub: a.belongsTo('RotaryClub', 'rotaryClubId'),
     profileComplete: a.boolean().default(false),
     applicationComplete: a.boolean().default(false),
     documentsComplete: a.boolean().default(false),
@@ -96,7 +97,7 @@ const schema = a.schema({
     .identifier(['camperUserSub', 'templateId'])
     .authorization((allow) => [
         allow.owner(),
-        allow.group("ADMINS").to(["read", "update", "delete"])
+        allow.group("ADMINS").to(["read", "create","update", "delete"])
     ]),
 
     DocumentTemplate: a.model({
@@ -129,11 +130,24 @@ const schema = a.schema({
             allow.authenticated().to(["read"])
         ]),
 
+    RotaryClub: a.model({
+        name: a.string().required(),
+        rotarians: a.hasMany('RotarianProfile', 'rotaryClubId'),
+        camperProfiles: a.hasMany('CamperProfile', 'rotaryClubId'),
+        requiresApplication: a.boolean(),
+        requiresLetterOfRecommendation: a.boolean()
+    })
+    .authorization((allow) => [
+        allow.authenticated().to(["read"]),
+        allow.group("ADMINS").to(["create", "read", "update", "delete"])
+    ]),
+
     RotarianProfile: a.model({
         userSub: a.id().required(),
         firstName: a.string(),
         lastName: a.string(),
-        rotaryClub: a.string(),
+        rotaryClubId: a.id(),
+        rotaryClub: a.belongsTo('RotaryClub', 'rotaryClubId'),
         email: a.email().required(),
         approved: a.boolean()
     })
@@ -161,7 +175,7 @@ const schema = a.schema({
 
     CamperProfile: a.model(CamperProfileModel)
         .identifier(['userSub'])
-        .secondaryIndexes((index) => [index('sponsoringRotaryClub')])
+        .secondaryIndexes((index) => [index('rotaryClubId')])
         .authorization((allow) => [
             allow.owner(),
             allow.group("ROTARIANS").to(["read"]),

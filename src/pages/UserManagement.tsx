@@ -3,7 +3,7 @@ import { Table, Spinner, Alert, Dropdown, Placeholder, Badge, Modal, Button, For
 import { faEllipsisV } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useListUsersQuery, useRotarianProfileQuery } from '../queries/queries';
-import { useListGroupsForUserQuery } from '../queries/queries';
+import { useListGroupsForUserQuery, useRotaryClubQuery } from '../queries/queries';
 import { ConfirmationModal, FormModal } from '../components/modals';
 import { useSetUserGroupMutation, useDeleteUserMutation, useSetUserAsRotarianMutation } from '../queries/mutations';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 import { AUTH_GROUPS, AuthGroup } from '../../amplify/auth/utils';
 import { getUserEmailFromAttr, getUserSubFromAttr } from '../api/auth';
 import { formatDateFull } from '../utils/datetime';
+import { PlaceholderElement } from '../components/PlaceholderElement';
 
 type ChangeGroupFormType = {
     group: AuthGroup | "CAMPERS";
@@ -26,8 +27,9 @@ function UserRow({ user }: { user: any }) {
 
     const authContext = useContext(AuthContext);
 
-    const { data: userGroups, isLoading: isGroupsLoading } = useListGroupsForUserQuery(getUserSubFromAttr(user.Attributes));
+    const { data: userGroups, isPending: isGroupsPending } = useListGroupsForUserQuery(getUserSubFromAttr(user.Attributes));
     const { data: rotarianProfile } = useRotarianProfileQuery(getUserSubFromAttr(user.Attributes));
+    const { data: rotaryClub, isPending: isRotaryClubPending } = useRotaryClubQuery(rotarianProfile?.rotaryClubId);
     const { mutate: setUserGroup } = useSetUserGroupMutation();
     const { mutate: setUserAsRotarian } = useSetUserAsRotarianMutation();
     const { mutate: deleteUser } = useDeleteUserMutation();
@@ -112,7 +114,7 @@ function UserRow({ user }: { user: any }) {
     return (
         <tr>
             <td>{userEmail}</td>
-            <td>{isGroupsLoading ?
+            <td>{isGroupsPending ?
                 <Placeholder animation='glow'>
                     <Placeholder xs={7} />
                 </Placeholder>
@@ -152,9 +154,16 @@ function UserRow({ user }: { user: any }) {
             >
                 <p>This user is requesting to be a rotarian:</p>
                 <Alert variant="secondary">
-                    <div><b>Name:</b> {rotarianProfile?.firstName} {rotarianProfile?.lastName}</div>
-                    <div><b>Email:</b> {userEmail}</div>
-                    <div><b>Rotary Club:</b> {rotarianProfile?.rotaryClub}</div>
+                    <div><b>Name: </b>{rotarianProfile?.firstName} {rotarianProfile?.lastName}</div>
+                    <div><b>Email: </b>{userEmail}</div>
+                    <div><b>Rotary Club: </b> 
+                        <PlaceholderElement 
+                            isLoading={isRotaryClubPending}
+                            props={{ xs: 7 }}
+                        >
+                            {rotaryClub?.name}
+                        </PlaceholderElement>
+                    </div>
                 </Alert>
                 <div>Are you sure you want to confirm this request?</div>
             </ConfirmationModal>

@@ -146,7 +146,7 @@ export const CampSettings = () => {
     const { data: otherCamps } = useListCampsQuery();
     const { mutate: updateCamp, isPending: isUpdatingCamp } = useUpdateCampMutation(otherCamps);
 
-    const { data: documentTemplates, isPending: isPendingDocumentTemplates } = useDocumentTemplatesByCampQuery(camp);
+    const { data: documentTemplates, isPending: isPendingDocumentTemplates } = useDocumentTemplatesByCampQuery(camp?.id);
 
 
     const { register, handleSubmit, formState: { errors }, reset } = useForm<EditCampForm>({

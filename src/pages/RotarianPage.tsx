@@ -1,92 +1,102 @@
-import { Table, Form, Button, Modal, Placeholder, Badge } from "react-bootstrap";
+import { Table, Button, Placeholder, Badge } from "react-bootstrap";
 import { useListCamperProfilesByRotaryClubQuery, useRotarianProfileQuery, useRotarianReviewQuery } from "../queries/queries";
-import { useCreateRotarianReviewMutation, useUpdateRotarianProfileMutation } from "../queries/mutations";
+import { useCreateRotarianReviewMutation } from "../queries/mutations";
 import { useContext, useState } from "react";
 import { AuthContext } from "../App";
-import { Link, Route, Routes, useNavigate } from "react-router";
+import { Route, Routes, useNavigate } from "react-router";
 import { RotarianProfileSchemaType } from "../api/apiRotarianProfile";
-import { ConfirmationModal, FormModal } from "../components/modals";
-import { ROTARY_CLUBS } from "./constants";
-import { SubmitHandler, useForm } from "react-hook-form";
-import { SpinnerButton } from "../utils/button";
+import { ConfirmationModal } from "../components/modals";
 import { useQueryClient } from "@tanstack/react-query";
 import { CamperProfileSchemaType } from "../api/apiCamperProfile";
+import { useRotaryClubQuery } from "../queries/queries";
+import { PlaceholderElement } from "../components/PlaceholderElement";
 
 
-type ClubFormType = {
-    rotaryClub: string | null;
-}
+// type ClubFormType = {
+//     rotaryClubId: string | null;
+// }
 
 function ClubView({ rotarianProfile }: { rotarianProfile?: RotarianProfileSchemaType | null }) {
-    const [changingClub, setChangingClub] = useState(false);
-    const [savingClub, setSavingClub] = useState(false);
-
-    const { mutateAsync: updateRotarianProfile } = useUpdateRotarianProfileMutation();
-    const queryClient = useQueryClient();
-
-    const authContext = useContext(AuthContext);
-
-    const {
-        register,
-        handleSubmit,
-        formState: { errors }
-    } = useForm<ClubFormType>({
-        values: {
-            rotaryClub: rotarianProfile?.rotaryClub ?? null
-        }
-    });
-
-    const handleChangeClub: SubmitHandler<ClubFormType> = async (data: ClubFormType) => {
-        if (changingClub) {
-            setSavingClub(true);
-            await updateRotarianProfile({
-                userSub: rotarianProfile?.userSub ?? "",
-                rotaryClub: data.rotaryClub
-            }, {
-                onSuccess: () => {
-                    queryClient.invalidateQueries({ queryKey: ["rotarianProfile", authContext.attributes.sub] });
-                }
-            });
-            
-            setSavingClub(false);
-        }
-
-        setChangingClub(false);
-    }
+    const { data: rotaryClub, isPending: isPendingRotaryClub } = useRotaryClubQuery(rotarianProfile?.rotaryClubId);
 
     return (
         <p>
-            <b>Your club:</b>
-            {' '}{rotarianProfile?.rotaryClub ?? <Placeholder animation="glow"><Placeholder xs={1} /></Placeholder>}
-            {' '}(<Link to="" onClick={() => setChangingClub(true)}>Change</Link>)
-            <FormModal
-                show={changingClub}
-                onClose={() => setChangingClub(false)}
-                title="Change Club"
-            >
-                <Form onSubmit={handleSubmit(handleChangeClub)}>
-                    <Modal.Body>
-                        <Form.Group>
-                            <Form.Label>Club</Form.Label>
-                            <Form.Select
-                                {...register("rotaryClub", { required: true })}
-                                isInvalid={!!errors.rotaryClub}
-                            >
-                                <option disabled value="">Select a club</option>
-                                {ROTARY_CLUBS.map((club) => (
-                                    <option key={club} value={club}>{club}</option>
-                                ))}
-                            </Form.Select>
-                        </Form.Group>
-                    </Modal.Body>
-                    <Modal.Footer>
-                        <Button variant="light" onClick={() => setChangingClub(false)}>Cancel</Button>
-                        <SpinnerButton loading={savingClub} variant="primary" type="submit">Save</SpinnerButton>
-                    </Modal.Footer>
-                </Form>
-            </FormModal>
+            <b>Your club: </b>
+            <PlaceholderElement isLoading={isPendingRotaryClub} props={{ xs: 7 }}>
+                {rotaryClub?.name}
+            </PlaceholderElement>
         </p>
     )
+    // const [changingClub, setChangingClub] = useState(false);
+    // const [savingClub, setSavingClub] = useState(false);
+
+    // const { mutateAsync: updateRotarianProfile } = useUpdateRotarianProfileMutation();
+    // const queryClient = useQueryClient();
+    // const { data: rotaryClub, isPending: isPendingRotaryClub } = useRotaryClubQuery(rotarianProfile?.rotaryClubId);
+
+    // const authContext = useContext(AuthContext);
+
+    // const {
+    //     register,
+    //     handleSubmit,
+    //     formState: { errors }
+    // } = useForm<ClubFormType>({
+    //     values: {
+    //         rotaryClubId: rotarianProfile?.rotaryClubId ?? null
+    //     }
+    // });
+
+    // const handleChangeClub: SubmitHandler<ClubFormType> = async (data: ClubFormType) => {
+    //     if (changingClub) {
+    //         setSavingClub(true);
+    //         await updateRotarianProfile({
+    //             userSub: rotarianProfile?.userSub ?? "",
+    //             rotaryClubId: data.rotaryClubId
+    //         }, {
+    //             onSuccess: () => {
+    //                 queryClient.invalidateQueries({ queryKey: ["rotarianProfile", authContext.attributes.sub] });
+    //             }
+    //         });
+            
+    //         setSavingClub(false);
+    //     }
+
+    //     setChangingClub(false);
+    // }
+
+    // return (
+    //     <p>
+    //         <b>Your club:</b>
+    //         {' '}{rotaryClub?.name ?? <Placeholder animation="glow"><Placeholder xs={1} /></Placeholder>}
+    //         {' '}(<Link to="" onClick={() => setChangingClub(true)}>Change</Link>)
+    //         <FormModal
+    //             show={changingClub}
+    //             onClose={() => setChangingClub(false)}
+    //             title="Change Club"
+    //         >
+    //             <Form onSubmit={handleSubmit(handleChangeClub)}>
+    //                 <Modal.Body>
+    //                     <Form.Group>
+    //                         <Form.Label>Club</Form.Label>
+    //                         <Form.Select
+    //                             {...register("rotaryClubId", { required: true })}
+    //                             isInvalid={!!errors.rotaryClubId}
+    //                         >
+    //                             <option disabled value="">Select a club</option>
+    //                             {rotaryClubs?.map((club) => (
+    //                                 <option key={club.id} value={club.id}>{club.name}</option>
+    //                             ))}
+    //                         </Form.Select>
+    //                     </Form.Group>
+    //                 </Modal.Body>
+    //                 <Modal.Footer>
+    //                     <Button variant="light" onClick={() => setChangingClub(false)}>Cancel</Button>
+    //                     <SpinnerButton loading={savingClub} variant="primary" type="submit">Save</SpinnerButton>
+    //                 </Modal.Footer>
+    //             </Form>
+    //         </FormModal>
+    //     </p>
+    // )
 }
 
 function CamperRow({ camperProfile: p }: { camperProfile: CamperProfileSchemaType }) {
@@ -184,7 +194,7 @@ function RotarianCamperTablePage() {
     const authContext = useContext(AuthContext);
 
     const { data: rotarianProfile } = useRotarianProfileQuery(authContext.attributes.sub);
-    const { data: camperProfiles, isLoading } = useListCamperProfilesByRotaryClubQuery(rotarianProfile?.rotaryClub ?? null);
+    const { data: camperProfiles, isLoading } = useListCamperProfilesByRotaryClubQuery(rotarianProfile?.rotaryClubId ?? null);
 
     return (
         <div>

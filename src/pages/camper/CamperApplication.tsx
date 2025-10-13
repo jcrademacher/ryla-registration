@@ -1,6 +1,6 @@
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
-import { Form, Row } from "react-bootstrap";
+import { Form, Row, Spinner } from "react-bootstrap";
 import { ThinSpacer } from "../../components/ThinSpacer";
 import { SpinnerButton } from "../../utils/button";
 import { useUpdateProfileMutation, useUploadCamperApplicationMutation } from "../../queries/mutations";
@@ -8,18 +8,15 @@ import { emitToast, ToastType } from "../../utils/notifications";
 import { AuthContext } from "../../App";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { useCamperProfileQuery, useCamperYearQuery } from "../../queries/queries";
-import ProgressBar from 'react-bootstrap/ProgressBar';
+import { useCamperProfileQuery, useCamperYearQuery, useRotaryClubQuery } from "../../queries/queries";
 import { TransferProgressEvent } from "aws-amplify/storage";
 import { Alert } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { Req } from "./CamperProfile";
 import { createFromISO, formatDateFullWithTime } from "../../utils/datetime";
+import { FileInputGroup } from "../../components/forms";
 
-type CamperApplicationFormType = {
-    studentEssay: FileList | null;
-}
 
 export function CamperApplicationView() {
 
@@ -30,24 +27,9 @@ export function CamperApplicationView() {
     const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
     const { data: camperYear } = useCamperYearQuery(camperProfile ?? null);
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors }
-    } = useForm<CamperApplicationFormType>();
+    const { data: rotaryClub, isPending: isRotaryClubPending, isError: isRotaryClubError } = useRotaryClubQuery(camperProfile?.rotaryClubId);
 
-    const [uploadProgress, setUploadProgress] = useState(0);
-
-    const handleUploadProgress = useCallback((event: TransferProgressEvent) => {
-        const { transferredBytes, totalBytes } = event;
-
-        if (totalBytes) {
-            const progress = (transferredBytes / totalBytes) * 100;
-            setUploadProgress(progress);
-        }
-    }, [setUploadProgress]);
-
-    const uploadCamperApplicationMutation = useUploadCamperApplicationMutation(handleUploadProgress);
+    const uploadCamperApplicationMutation = useUploadCamperApplicationMutation();
     const updateCamperProfileMutation = useUpdateProfileMutation();
 
     const startDate = useMemo(() => createFromISO(camperYear?.startDate ?? ""), [camperYear?.startDate]);
@@ -62,84 +44,82 @@ export function CamperApplicationView() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
-    const onSubmit: SubmitHandler<CamperApplicationFormType> = async (data: CamperApplicationFormType) => {
-        setSaving(true);
+    const form = useForm<any>();
+    const { handleSubmit } = form;
 
-        if (data.studentEssay && data.studentEssay.length > 0) {
-            uploadCamperApplicationMutation.mutate({ file: data.studentEssay[0], userSub: authContext.attributes.sub }, {
-                onSettled: () => setSaving(false),
-                onSuccess: () => {
-                    updateCamperProfileMutation.mutate({
-                        userSub: authContext.attributes.sub ?? "",
-                        applicationComplete: true,
-                    }, {
-                        onSuccess: (data) => {
-                            queryClient.setQueryData(['camperProfile', authContext.attributes.sub], data);
-                            setTimeout(() => {
-                                navigate('/camper/rotary-club-review');
-                            }, 10);
-                            emitToast("Application submitted", ToastType.Success);
-                        }
-                    });
-                }
-            });
-        }
-        else {
-            emitToast("Essay is empty.", ToastType.Error);
-        }
+    const onSubmit: SubmitHandler<any> = async () => {
+        console.log("submitting application");
+        setSaving(true);
+        updateCamperProfileMutation.mutate({
+            userSub: authContext.attributes.sub ?? "",
+            applicationComplete: true,
+        }, {
+            onSuccess: (data) => {
+                queryClient.setQueryData(['camperProfile', authContext.attributes.sub], data);
+                setTimeout(() => {
+                    navigate('/camper/rotary-club-review');
+                }, 10);
+                emitToast("Application submitted", ToastType.Success);
+            },
+            onSettled: () => setSaving(false),
+            onError: (error) => {
+                emitToast(`Error submitting application: ${error.message}`, ToastType.Error);
+            }
+        });
     }
 
-    const appFilename = useMemo(() => camperProfile?.applicationFilepath?.split("/").pop(), [camperProfile?.applicationFilepath]);
+    const applicationUploadHandler = (file: File, onProgress?: (event: TransferProgressEvent) => void, onSettled?: () => void) => {
+        uploadCamperApplicationMutation.mutate({ file, userSub: authContext.attributes.sub, onProgress }, {
+            onSettled: () => onSettled?.(),
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ['camperProfile', authContext.attributes.sub] });
+                emitToast("Application uploaded", ToastType.Success);
+            },
+            onError: (error) => {
+                emitToast(`Error uploading application: ${error.message}`, ToastType.Error);
+            }
+        });
+    }
+
+    if (isRotaryClubPending) {
+        return <Spinner animation="border" />;
+    }
+
+    if (isRotaryClubError) {
+        return <Alert variant="danger">Error loading details for your rotary club. Please try again later.</Alert>;
+    }
 
     return (
         <div>
-            {/* File upload form using react-hook-form and react-bootstrap */}
-            <Form
-                onSubmit={handleSubmit(onSubmit)}
-            >
-                <Form.Group>
-                    <Form.Label>
-                        Please upload an essay answering the following prompt:
+
+            {rotaryClub?.requiresApplication &&
+
+                <>
+                    <h5>Application File</h5>
+                    <ThinSpacer />
+                    <p>
+                        Your rotary club requires an application. Please upload an essay answering the following prompt:
                         <br />
                         <strong>What leadership strengths do you have and what would be your goals for
                             attending a 4-day outdoor leadership camp?</strong>
-                    </Form.Label>
-                    {appFilename && (
-                        <div className="mb-2">
-                            <small className="text-muted">
-                                Previously uploaded: <strong>{appFilename}</strong>
-                            </small>
-                        </div>
-                    )}
-                    <Form.Control
-                        type="file"
-                        {...register("studentEssay", { required: true })}
-                        accept=".pdf,.doc,.docx,.txt"
-                        isInvalid={!!errors.studentEssay}
+                    </p>
+                    <FileInputGroup
+                        filepath={camperProfile?.applicationFilepath}
+                        submitHandler={applicationUploadHandler}
+                        isPending={uploadCamperApplicationMutation.isPending}
                     />
-                    <Form.Control.Feedback type="invalid">
-                        {appFilename ? "Please select a new file to replace the existing one." : "Student essay is required."}
-                    </Form.Control.Feedback>
-                    {uploadProgress > 0 && <><br /><ProgressBar now={uploadProgress} label={`${uploadProgress.toFixed(0)}%`} /></>}
-                </Form.Group>
-                {/* <Form.Group>
-                    <Form.Label>Letter of Recommendation</Form.Label>
-                    <Form.Control
-                        type="file"
-                        {...register("letterOfRecommendation", { required: true })}
-                        accept=".pdf,.doc,.docx,.txt"
-                        isInvalid={!!errors.letterOfRecommendation}
-                    />
-                    <Form.Control.Feedback type="invalid">
-                        Letter of recommendation is required.
-                    </Form.Control.Feedback>
-                </Form.Group> */}
-                
-                <br />
-                <Alert variant="warning">
-                    <FontAwesomeIcon icon={faCircleExclamation} style={{ marginRight: 10 }} />
-                    <strong>Students: Please read the following information carefully</strong>
-                </Alert>
+                    <br/>
+                </>
+            }
+            <h5>Acknowledgements</h5>
+            <ThinSpacer />
+            <Alert variant="warning">
+                <FontAwesomeIcon icon={faCircleExclamation} style={{ marginRight: 10 }} />
+                <strong>Students: Please read the following information carefully</strong>
+            </Alert>
+            <Form
+                onSubmit={handleSubmit(onSubmit)}
+            >
                 <Row>
                     <Form.Group>
                         <Form.Label as="strong">
@@ -217,7 +197,7 @@ export function CamperApplicationView() {
                                 <span>
                                     <Req />On {endDate.toFormat("EEEE, MMMM d")} there is a final BBQ
                                     and ceremony that begins at {endDate.toFormat("h:mm a")} and ends
-                                    at {endDate.plus({ minutes: 75 }).toFormat("h:mm a")}. 
+                                    at {endDate.plus({ minutes: 75 }).toFormat("h:mm a")}.
                                     Students may be picked up beginning at {endDate.toFormat("h:mm a")}.
                                     Tickets for the BBQ are $12.00,
                                     $20.00 for two, or $30.00 for three, etc.
@@ -250,9 +230,9 @@ export function CamperApplicationView() {
                 <SpinnerButton
                     type="submit"
                     loading={saving}
-                    disabled={appDeadlinePassed}
+                    disabled={appDeadlinePassed || isRotaryClubPending || isRotaryClubError}
                 >
-                    {appFilename ? "Update Application" : "Submit Application"}
+                    Submit Application
                 </SpinnerButton>
             </Form>
         </div>

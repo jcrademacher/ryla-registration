@@ -39,7 +39,6 @@ export async function listAllUsers() {
     const response = await client.queries.listUsers();
 
     checkErrors(response.errors);
-    console.log(response.data);
 
     return JSON.parse(response.data as string ?? "{}");
 }

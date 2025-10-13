@@ -23,7 +23,7 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
     const { data: camp } = useCampQuery();
     const {
         data: documentTemplates
-    } = useDocumentTemplatesByCampQuery(camp);
+    } = useDocumentTemplatesByCampQuery(camp?.id);
 
     const mailedDocuments = useMemo(
         () => documentTemplates?.filter(doc => doc.type === "mail") || [], [documentTemplates]);

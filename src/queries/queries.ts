@@ -5,9 +5,10 @@ import { getUser, getUserAttributes, getUserGroups, listAllUsers, listGroupsForU
 import { getCamperApplicationFilename, getCamperDocument, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
 import { getRotarianProfile } from "../api/apiRotarianProfile";
 import { AuthGroup } from "../../amplify/auth/utils";
-import { CampSchemaType, listCamps } from "../api/apiCamp";
+import { listCamps } from "../api/apiCamp";
 import { createFromISO } from "../utils/datetime";
 import { listCamperDocuments } from "../api/apiDocuments";
+import { getRotaryClub, listRotaryClubs } from "../api/apiRotaryClub";
 
 export function useUserQuery(user: AuthUser | undefined) {
     return useQuery({
@@ -33,7 +34,7 @@ export function useUserQuery(user: AuthUser | undefined) {
     });
 }
 
-export function useCamperProfileQuery(userSub: string | undefined) {
+export function useCamperProfileQuery(userSub?: string | null) {
     return useQuery({
         queryKey: ["camperProfile", userSub],
         queryFn: () => {
@@ -49,7 +50,7 @@ export function useCamperProfileQuery(userSub: string | undefined) {
     });
 }
 
-export function useRotarianReviewQuery(camperSub: string | undefined) {
+export function useRotarianReviewQuery(camperSub?: string | null) {
     return useQuery({
         queryKey: ["rotarianReview", camperSub],
         queryFn: async () => {
@@ -65,13 +66,6 @@ export function useRotarianReviewQuery(camperSub: string | undefined) {
         enabled: !!camperSub
     });
 }
-
-// export function useCamperApplicationFilenameQuery(userSub: string | undefined) {
-//     return useQuery({
-//         queryKey: ["camperApplicationFilename", userSub],
-//         queryFn: getCamperApplicationFilename
-//     });
-// }
 
 export function useCamperApplicationFilenameQuery(userSub: string | undefined) {
     return useQuery({
@@ -215,30 +209,32 @@ export function useCamperYearQuery(camperProfile: CamperProfileSchemaType | null
     });
 }
 
-export function useDocumentTemplatesByCampQuery(camp?: CampSchemaType | null) {
+export function useDocumentTemplatesByCampQuery(campId?: string | null) {
     return useQuery({
-        queryKey: ['documentTemplatesByCamp', camp?.id],
+        queryKey: ['documentTemplatesByCamp', campId],
         queryFn: () => {
-            if (!camp) {
+            if (!campId) {
                 throw new Error("Camp is required");
             }
-            return listDocumentTemplatesByCamp(camp.id);
+            return listDocumentTemplatesByCamp(campId);
         },
         staleTime: 60 * 1000, // 1 minute
-        enabled: !!camp?.id
+        enabled: !!campId
     });
 }
 
 export function useCamperDocumentsQuery(camperUserSub?: string | null) {
+    const { data: camperProfile } = useCamperProfileQuery(camperUserSub);
+
     return useQuery({
         queryKey: ["camperDocuments", camperUserSub],
         queryFn: () => {
-            if(!camperUserSub) {
-                throw new Error("Camper user sub is required");
+            if(!camperProfile) {
+                throw new Error("Camper profile null when needed for camper documents");
             }
-            return listCamperDocuments(camperUserSub);
+            return listCamperDocuments(camperProfile);
         },
-        enabled: !!camperUserSub,
+        enabled: !!camperProfile,
     });
 }
 
@@ -259,14 +255,39 @@ export function useCamperDocumentQuery(camperUserSub?: string | null, templateId
 }
 
 export function useCamperStatusQuery(camperUserSub?: string | null) {
+    const { data: camperProfile } = useCamperProfileQuery(camperUserSub);
+
     return useQuery({
         queryKey: ["camperStatus", camperUserSub],
         queryFn: () => {
-            if(!camperUserSub) {
-                throw new Error("Camper user sub is required");
+            if(!camperProfile) {
+                throw new Error("Camper profile null when needed for camper status");
             }
-            return getCamperStatus(camperUserSub);
+            return getCamperStatus(camperProfile);
         },
-        enabled: !!camperUserSub,
+        enabled: !!camperProfile,
+    });
+}
+
+export function useRotaryClubQuery(rotaryClubId?: string | null) {
+
+    return useQuery({
+        queryKey: ["rotaryClub", rotaryClubId],
+        queryFn: () => {
+            if(!rotaryClubId) {
+                throw new Error("Camper profile data missing to get rotary club");
+            }
+            return getRotaryClub(rotaryClubId);
+        },
+        enabled: !!rotaryClubId
+    });
+}
+
+export function useListRotaryClubsQuery() {
+    return useQuery({
+        queryKey: ["rotaryClubs"],
+        queryFn: () => {
+            return listRotaryClubs();
+        }
     });
 }
