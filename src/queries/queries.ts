@@ -13,13 +13,10 @@ import { useContext } from "react";
 import { AuthContext } from "../App";
 import { getActiveCamp } from "../api/apiCamp";
 
-export function useUserQuery(user: AuthUser | undefined) {
+export function useUserQuery(userId?: string | null) {
     return useQuery({
-        queryKey: ["user", user?.userId],
+        queryKey: ["user", userId],
         queryFn: async () => {
-            if (!user) {
-                throw new Error("User is required");
-            }
 
             console.log("fetching user data");
             const session = await fetchAuthSession();
@@ -28,11 +25,9 @@ export function useUserQuery(user: AuthUser | undefined) {
             return {
                 groups,
                 attributes,
-                user: user,
                 identityId: session.identityId
             }
         },
-        enabled: !!user,
         staleTime: 5 * 60 * 1000,
         refetchInterval: 5 * 60 * 1000
     });
@@ -315,10 +310,9 @@ export function useRecommendationUnauthenticatedQuery(recId?: string | null) {
         queryKey: ['recommendation', recId],
         queryFn: () => {
             if(!recId) {
-                throw new Error("Recommendation id is required");
+                return null;
             }
             return getRecommendationUnauthenticated(recId);
         },
-        enabled: !!recId,
     });
 }

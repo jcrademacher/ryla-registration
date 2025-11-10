@@ -6,7 +6,6 @@ import { AuthUser, UserAttributeKey } from 'aws-amplify/auth';
 import { Routes, Route } from "react-router";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { HomePage } from "./pages/HomePage";
-import { AdminPage } from "./pages/AdminPage";
 import { RotarianPage } from "./pages/RotarianPage";
 import { CamperPage } from "./pages/camper/CamperPage";
 import { createContext } from "react";
@@ -50,14 +49,12 @@ function App() {
 }
 
 type AuthContextType = {
-    user: AuthUser | null;
     groups: string;
     attributes: Partial<Record<UserAttributeKey, string>>;
     identityId?: string;
 }
 
 export const AuthContext = createContext<AuthContextType>({
-    user: null,
     groups: "",
     attributes: {},
 });
@@ -69,7 +66,7 @@ interface AuthViewProps {
 
 function AuthView({ signOut, user }: AuthViewProps) {
 
-    const { data: userData, isLoading } = useUserQuery(user);
+    const { data: userData, isLoading } = useUserQuery(user?.userId);
 
     if (isLoading) {
         return (
@@ -89,7 +86,7 @@ function AuthView({ signOut, user }: AuthViewProps) {
         return (
             <AuthContext.Provider value={authContextValue}>
                 <div id="main">
-                    <NavBar signOut={signOut} title="RYLA 7780 Registration" />
+                    <NavBar isAdmin={isAdmin} signOut={signOut} title="RYLA 7780 Registration" />
                     <div id="content">
                         <Routes>
                             {/* Home route - accessible to all authenticated users */}
@@ -102,17 +99,17 @@ function AuthView({ signOut, user }: AuthViewProps) {
                             <Route
                                 path="/admin"
                             >
-                                <Route index element={
+                                {/* <Route index element={
                                     <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
                                         <AdminPage />
                                     </ProtectedRoute>
-                                } />
+                                } /> */}
                                 <Route path="user-management" element={
                                     <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
                                         <UserManagement />
                                     </ProtectedRoute>
                                 } />
-                                <Route path="camps" element={
+                                <Route index element={
                                     <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
                                         <CampDashboard />
                                     </ProtectedRoute>

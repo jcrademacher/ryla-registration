@@ -1,14 +1,16 @@
 import '../styles/navbar.scss';
 import { UseAuthenticator } from '@aws-amplify/ui-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Dropdown } from 'react-bootstrap';
+import { Button, Dropdown, Offcanvas } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
-import { faQuestion, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faCampground, faQuestion, faUser, faPuzzlePiece, faUsers } from '@fortawesome/free-solid-svg-icons';
+import { useState } from 'react';
 
 interface NavBarProps {
     signOut?: UseAuthenticator["signOut"] | undefined;
     children?: React.ReactNode;
     title?: string;
+    isAdmin?: boolean;
 }
 
 type DropdownOptions = {
@@ -52,12 +54,56 @@ export function NavRight({ children }: { children: React.ReactNode }) {
     )
 }
 
-export function NavBar({ signOut, title, children }: NavBarProps) {
+export function NavOffcanvas({ show }: { show: boolean }) {
+    const [showOffcanvas, setShowOffcanvas] = useState(false);
+
     const navigate = useNavigate();
 
+    if (!show) {
+        return null;
+    }
+
+    const closeNavigate = (path: string) => {
+        setShowOffcanvas(false);
+        navigate(path);
+    }
+
+    return (
+        <span className="me-3">
+            <FontAwesomeIcon
+                icon={faBars} size="lg"
+                onClick={() => { setShowOffcanvas(true) }}
+                style={{ cursor: 'pointer' }}
+            />
+            <Offcanvas show={showOffcanvas} onHide={() => { setShowOffcanvas(false) }}>
+                <Offcanvas.Header closeButton>
+                    <Offcanvas.Title>Admin Menu</Offcanvas.Title>
+                </Offcanvas.Header>
+                <Offcanvas.Header className="admin-select-item" onClick={() => { closeNavigate('/admin') }}>
+                    <FontAwesomeIcon icon={faCampground} className="icon" />
+                    Camp Dashboard
+                </Offcanvas.Header>
+                <Offcanvas.Header className="admin-select-item" onClick={() => { closeNavigate('/admin/rotary-clubs') }}>
+                    <FontAwesomeIcon icon={faPuzzlePiece} className="icon" />
+                    Rotary Clubs
+                </Offcanvas.Header>
+                <Offcanvas.Header className="admin-select-item" onClick={() => { closeNavigate('/admin/user-management') }}>
+                    <FontAwesomeIcon icon={faUsers} className="icon" />
+                    User Management
+                </Offcanvas.Header>
+            </Offcanvas>
+
+        </span>
+
+    )
+}
+
+export function NavBar({ isAdmin = false, signOut, title, children }: NavBarProps) {
+    const navigate = useNavigate();
 
     return (
         <div id="nav">
+            <NavOffcanvas show={isAdmin} />
             <span style={{ cursor: 'pointer' }} onClick={() => { navigate('/') }}>
                 <b>{title}</b>
             </span>

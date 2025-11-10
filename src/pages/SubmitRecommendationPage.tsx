@@ -50,6 +50,9 @@ export function SubmitRecommendationPage() {
     else if (isErrorRecommendation) {
         return <Alert variant="danger">Error loading recommendation. Please try again later or ask the camper to resend the link.</Alert>;
     }
+    else if (!recommendation) {
+        return <Alert variant="danger">Request does not exist. Please contact the camper to resend the link.</Alert>;
+    }
 
     return (
         <div className="side-pad-20">

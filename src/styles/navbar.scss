@@ -62,3 +62,33 @@
         }
     }
 }
+
+.admin-select-item {
+    &.offcanvas-header {
+        cursor: pointer;
+        padding-left: 10px;
+        height: 50px;
+        font-weight: 400;
+        font-size: 1.2em;
+
+        .icon {
+            width: 50px;
+        }
+        
+
+        &.sub {
+            padding-left: 40px;
+            color: rgb(92, 92, 92);
+            font-weight: 300;
+            height: 10px;
+            font-size: 1em;
+        }
+
+        &:hover {
+            background-color: colors.$primary;
+            color: white;
+            
+        }
+        
+    }
+}
