@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { AuthUser, fetchAuthSession } from "aws-amplify/auth";
+import { fetchAuthSession } from "aws-amplify/auth";
 import { getCamperProfile, getRotarianReviewFromCamperSub, getCamperYearByUserSub} from "../api/apiCamperProfile";
 import { getUser, getUserAttributes, getUserGroups, listAllUsers, listGroupsForUser } from "../api/auth";
 import { getCamperApplicationFilename, getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
