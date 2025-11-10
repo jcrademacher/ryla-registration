@@ -31,7 +31,12 @@
     position: absolute;
     right: 10px;
     display: flex;
-    gap: 10px;
+    gap: 1px;
+
+    .btn {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
 
     
     #signout-button {

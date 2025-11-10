@@ -1,6 +1,6 @@
 import { useContext, useMemo, useState } from 'react';
 import { Table, Spinner, Alert, Dropdown, Placeholder, Badge, Modal, Button, Form } from 'react-bootstrap';
-import { faEllipsisV } from '@fortawesome/free-solid-svg-icons';
+import { faEllipsisV, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useListUsersQuery, useRotarianProfileQuery } from '../queries/queries';
 import { useListGroupsForUserQuery, useRotaryClubQuery } from '../queries/queries';
@@ -174,8 +174,11 @@ function UserRow({ user }: { user: any }) {
             >
                 <Form onSubmit={deleteUserForm.handleSubmit(handleDeleteUser)}>
                     <Modal.Body>
-                        <p>Are you sure you want to delete this user?</p>
-                        <p className="text-danger">Warning: This action cannot be undone.</p>
+                        <Alert variant="danger">
+                            <FontAwesomeIcon icon={faTriangleExclamation} />
+                            <b>Warning:</b> This action cannot be undone. Deleting a user
+                            will remove any and all data associated with the user, such as camper profiles, rotarian profiles, and rotarian reviews.
+                        </Alert>
                         <Form.Group>
                             <Form.Label>Enter the user's email address to confirm deletion</Form.Label>
                             <Form.Control
@@ -194,7 +197,7 @@ function UserRow({ user }: { user: any }) {
                         <Button variant="light" onClick={() => setShowConfirmDelete(false)}>Cancel</Button>
                         <SpinnerButton
                             loading={deletingUser}
-                            variant="primary"
+                            variant="danger"
                             type="submit"
                             disabled={userEmail !== deleteUserForm.watch("email")}
                         >

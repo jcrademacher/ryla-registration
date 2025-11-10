@@ -1,16 +1,18 @@
 import { useParams } from "react-router";
 import {
     useCamperProfileQuery,
-    useRotarianReviewQuery, useGetUserEmailQuery, useUrlToDocumentQuery, useCamperStatusQuery, useRotaryClubQuery, useDocumentTemplatesByCampQuery,
-    useCamperDocumentQuery
+    useRotarianReviewQuery, useGetUserEmailQuery, useUrlToDocumentQuery, useRotaryClubQuery, useDocumentTemplatesByCampQuery,
+    useCamperDocumentQuery,
+    useRecommendationQuery,
+    useDocumentStatusQuery
 } from "../queries/queries";
-import { formatPhoneNumber, getCamperAddress, getCamperBirthdate, getCamperName } from "../utils/fields";
-import { Table } from "react-bootstrap";
+import { formatPhoneNumber, getCamperAddress, getCamperBirthdate, getCamperName, getFilepathFilename } from "../utils/fields";
+import { Table, OverlayTrigger, Tooltip, Spinner } from "react-bootstrap";
 import { ThinSpacer } from "../components/ThinSpacer";
 import { PlaceholderElement } from "../components/PlaceholderElement";
 import { useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faXmark, faCheck, faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { DocumentTemplateSchemaType } from "../api/apiDocuments";
 
 const FileDisplay = ({ camperUserSub, template }: { camperUserSub?: string | null, template: DocumentTemplateSchemaType }) => {
@@ -19,18 +21,55 @@ const FileDisplay = ({ camperUserSub, template }: { camperUserSub?: string | nul
 
     const filename = useMemo(() => thisDocument?.filepath?.split("/").pop(), [thisDocument?.filepath]);
 
+    let mailedDisplayStatus;
+    let fileStatus;
+
+    if (thisDocument?.received && thisDocument?.approved) {
+        fileStatus = (
+            <OverlayTrigger
+                placement="left"
+                overlay={<Tooltip id="tooltip-received-approved">Received and Approved</Tooltip>}
+            >
+                <FontAwesomeIcon icon={faCheck} className="text-success me-1" />
+            </OverlayTrigger>
+        );
+        mailedDisplayStatus = <div className="text-success"><FontAwesomeIcon icon={faCheck} className="me-1" />Received & Approved</div>;
+    }
+    else if (thisDocument?.received && !thisDocument?.approved) {
+        fileStatus = (
+            <OverlayTrigger
+                placement="left"
+                overlay={<Tooltip id="tooltip-received-not-approved">Received but Not Approved</Tooltip>}
+            >
+                <FontAwesomeIcon icon={faCircleExclamation} className="text-warning me-1" />
+            </OverlayTrigger>
+        );
+        mailedDisplayStatus = <div className="text-warning"><FontAwesomeIcon icon={faCircleExclamation} className="me-1" />Received & Not Approved</div>;
+    }
+    else {
+        fileStatus = (
+            <OverlayTrigger
+                placement="left"
+                overlay={<Tooltip id="tooltip-not-received">Not Received</Tooltip>}
+            >
+                <FontAwesomeIcon icon={faXmark} className="text-danger me-1" />
+            </OverlayTrigger>
+        );
+        mailedDisplayStatus = <div className="text-danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Missing</div>;
+    }
+
     return (
         <tr>
             <td><b>{template.name}{template.required ? " (Required)" : ""}:</b></td>
             <td>
                 <PlaceholderElement props={{ xs: 7 }} isLoading={isPendingThisDocument}>
                     {filename ?
-                        <a target="_blank" href={url}>{filename}</a>
+                        (<>{fileStatus}<a target="_blank" href={url}>{filename}</a></>)
                         :
-                        (template.type === "mail" && thisDocument?.received ? 
-                            <div className="text-success"><FontAwesomeIcon icon={faCheck} className="me-1" />Received</div> 
-                            : 
-                            <div className="text-danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Missing</div>)}
+                        (template.type === "mail" ?
+                            mailedDisplayStatus
+                            :
+                            <div className="text-danger">{fileStatus}Missing</div>)}
                 </PlaceholderElement>
             </td>
         </tr>
@@ -43,23 +82,54 @@ export function ViewCamperPage() {
     const { data: camperProfile, isPending: isPendingCamperProfile } = useCamperProfileQuery(camperSub);
     const { data: rotarianReview } = useRotarianReviewQuery(camperSub);
     const { data: userEmail, isPending: isUserEmailPending } = useGetUserEmailQuery(camperSub);
-    const { data: camperStatus } = useCamperStatusQuery(camperSub);
+    const { data: documentsComplete } = useDocumentStatusQuery(camperSub, camperProfile?.campId);
     const { data: rotaryClub, isPending: isRotaryClubPending } = useRotaryClubQuery(camperProfile?.rotaryClubId);
 
     const { data: documentTemplates } = useDocumentTemplatesByCampQuery(camperProfile?.campId);
-
-    const documentsComplete = camperStatus?.documentsComplete;
 
     const {
         data: urlToCamperApplication
     } = useUrlToDocumentQuery(camperProfile?.applicationFilepath);
     // console.log(Object.keys(camperProfile ?? {}));
 
-    const appFilename = useMemo(() => camperProfile?.applicationFilepath?.split("/").pop(), [camperProfile?.applicationFilepath]);
+
+    const appFilename = useMemo(() => getFilepathFilename(camperProfile?.applicationFilepath), [camperProfile?.applicationFilepath]);
+
+    const { data: rec, isPending: isPendingRec } = useRecommendationQuery(camperSub);
+    const recFilename = useMemo(() => getFilepathFilename(rec?.filepath), [rec?.filepath]);
+
+    const { data: urlToRec } = useUrlToDocumentQuery(rec?.filepath);
+
+    if(isPendingCamperProfile) {
+        return <div>
+            <Spinner animation="border" />
+            <h4>Loading camper...</h4>
+        </div>
+    }
 
     return (
         <div>
-            <h3>Camper Information</h3>
+            <div className="d-flex align-items-center justify-content-between">
+                <h3>
+                    {getCamperName(camperProfile)} {camperProfile?.highSchool ? `(${camperProfile?.highSchool})` : ''}
+                </h3>
+                
+                {/* <Button variant="light" size="sm" onClick={() => { 
+                    if(!camperSub) {
+                        emitToast('Camper Sub is required. Check auth flow', ToastType.Error);
+                        return;
+                    }
+                    generateCamperPdf(camperSub);
+                }}>
+                    <FontAwesomeIcon
+                        size="sm"
+                        className="me-2"
+                        icon={faDownload}
+                    />
+                    Download Package
+                </Button> */}
+            </div>
+
             <span style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
                 {camperProfile?.profileComplete ? (
                     <span className="badge bg-success">Profile Complete</span>
@@ -84,8 +154,13 @@ export function ViewCamperPage() {
                     <span className="badge bg-warning text-dark">Documents Incomplete</span>
                 )}
             </span>
+
             <Table className="camper-information-table">
                 <tbody>
+                    <tr><td colSpan={2}>
+                        <h5>Application Files</h5>
+                        <ThinSpacer />
+                    </td></tr>
                     <tr>
                         <td><b>Application ({rotaryClub?.requiresApplication ? "Required" : "Optional"}):</b></td>
                         <td>
@@ -97,15 +172,32 @@ export function ViewCamperPage() {
                             </PlaceholderElement>
                         </td>
                     </tr>
+                    <tr>
+                        <td><b>Letter of Recommendation ({rotaryClub?.requiresLetterOfRecommendation ? "Required" : "Optional"}):</b></td>
+                        <td>
+                            <PlaceholderElement props={{ xs: 7 }} isLoading={isPendingRec}>
+                                {recFilename ?
+                                    <a target="_blank" href={urlToRec}>{recFilename}</a>
+                                    :
+                                    <div className="text-danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Missing</div>}
+                            </PlaceholderElement>
+                        </td>
+                    </tr>
 
-                    {documentTemplates?.map(template => (
-                        <FileDisplay 
-                            key={template.id} 
-                            camperUserSub={camperSub} 
-                            template={template} 
+                    <tr><td colSpan={2}>
+                        <br/>
+                        <h5>Documents</h5>
+                        <ThinSpacer />
+                    </td></tr>
+
+                    {documentTemplates?.filter(template => template.type !== "viewonly").map(template => (
+                        <FileDisplay
+                            key={template.id}
+                            camperUserSub={camperSub}
+                            template={template}
                         />
                     ))}
-                    
+
 
                     {/* <FileDisplay
                         title="Letter of Recommendation" 
@@ -115,11 +207,27 @@ export function ViewCamperPage() {
                     /> */}
 
 
-                    <tr><td colSpan={2}><ThinSpacer /></td></tr>
+                    <tr><td colSpan={2}>
+                        <br/>
+                        <h5>Camper Information</h5>
+                        <ThinSpacer />
+                    </td></tr>
 
                     <tr>
-                        <td><b>Name:</b></td>
-                        <td>{getCamperName(camperProfile)}</td>
+                        <td><b>First Name:</b></td>
+                        <td>{camperProfile?.firstName}</td>
+                    </tr>
+                    <tr>
+                        <td><b>Middle Initial:</b></td>
+                        <td>{camperProfile?.middleInitial}</td>
+                    </tr>
+                    <tr>
+                        <td><b>Last Name:</b></td>
+                        <td>{camperProfile?.lastName}</td>
+                    </tr>
+                    <tr>
+                        <td><b>Nickname:</b></td>
+                        <td>{camperProfile?.nickname}</td>
                     </tr>
                     <tr>
                         <td><b>Email:</b></td>
@@ -158,30 +266,28 @@ export function ViewCamperPage() {
                         </td>
                     </tr>
 
-                    <tr><td colSpan={2}><ThinSpacer /></td></tr>
-
                     <tr>
-                        <td><b>Parent 1:</b></td>
+                        <td><b>Parent/Guardian 1:</b></td>
                         <td>{camperProfile?.parent1FirstName} {camperProfile?.parent1LastName}</td>
                     </tr>
                     <tr>
-                        <td><b>Parent 1 Email:</b></td>
+                        <td><b>Parent/Guardian 1 Email:</b></td>
                         <td><a href={`mailto:${camperProfile?.parent1Email}`}>{camperProfile?.parent1Email}</a></td>
                     </tr>
                     <tr>
-                        <td><b>Parent 1 Phone:</b></td>
+                        <td><b>Parent/Guardian 1 Phone:</b></td>
                         <td>{formatPhoneNumber(camperProfile?.parent1Phone)}</td>
                     </tr>
                     <tr>
-                        <td><b>Parent 2:</b></td>
+                        <td><b>Parent/Guardian 2:</b></td>
                         <td>{camperProfile?.parent2FirstName} {camperProfile?.parent2LastName}</td>
                     </tr>
                     <tr>
-                        <td><b>Parent 2 Email:</b></td>
+                        <td><b>Parent/Guardian 2 Email:</b></td>
                         <td><a href={`mailto:${camperProfile?.parent2Email}`}>{camperProfile?.parent2Email}</a></td>
                     </tr>
                     <tr>
-                        <td><b>Parent 2 Phone:</b></td>
+                        <td><b>Parent/Guardian 2 Phone:</b></td>
                         <td>{formatPhoneNumber(camperProfile?.parent2Phone)}</td>
                     </tr>
                     <tr>
@@ -196,8 +302,6 @@ export function ViewCamperPage() {
                         <td><b>Emergency Contact Relationship:</b></td>
                         <td>{camperProfile?.emergencyContactRelationship}</td>
                     </tr>
-
-                    <tr><td colSpan={2}><ThinSpacer /></td></tr>
 
                     <tr>
                         <td><b>Guidance Counselor Name:</b></td>

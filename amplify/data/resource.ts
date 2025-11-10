@@ -7,6 +7,8 @@ import { setUserGroup } from "../functions/set-user-group/resource";
 import { AUTH_GROUPS } from "../auth/utils";
 import { deleteUser } from "../functions/delete-user/resource";
 import { getUser } from "../functions/get-user/resource";
+import { sendEmail } from "../functions/send-email/resource";
+import { generateCamperPdf } from "../functions/generate-camper-pdf/resource";
 // import { generateInviteCode } from "../functions/generate-invite-code/resource";
 // import { selectUserRole } from "../functions/select-user-role/resource";
 
@@ -48,18 +50,25 @@ const CamperProfileModel = {
     emergencyContactName: a.string(),
     emergencyContactPhone: a.phone(),
     emergencyContactRelationship: a.string(),
-    rotaryClubId: a.id(),
+    rotaryClubId: a.id().authorization((allow) => [
+        allow.group("ROTARIANS").to(["read", "update"]),
+        allow.group("ADMINS"),
+        allow.owner()
+    ]),
     rotaryClub: a.belongsTo('RotaryClub', 'rotaryClubId'),
     profileComplete: a.boolean().default(false),
     applicationComplete: a.boolean().default(false),
+    applicationSubmittedAt: a.datetime(),
     documentsComplete: a.boolean().default(false),
     rotarianReview: a.hasOne('RotarianReview', 'camperUserSub'),
     attendanceConfirmations: a.integer().default(0),
+    arrivedAtCamp: a.boolean().default(false),
     campId: a.id().required(),
     camp: a.belongsTo('Camp', 'campId'),
     documents: a.hasMany('CamperDocument', 'camperUserSub'),
     applicationFilepath: a.string(),
-    recommendationFilepath: a.string(),
+    recommendation: a.hasMany('Recommendation', 'camperUserSub'),
+    tshirtSize: a.string()
 };
 
 const CamperProfileModelViewState: Record<keyof typeof CamperProfileModel & 'createdAt', any> = {
@@ -72,9 +81,6 @@ const CamperProfileModelViewState: Record<keyof typeof CamperProfileModel & 'cre
 
 
 const schema = a.schema({
-
-
-
     CamperProfileViewState: a.customType(CamperProfileModelViewState),
     CamperProfileFilterState: a.customType({
         profileComplete: a.boolean(),
@@ -85,6 +91,25 @@ const schema = a.schema({
         confirmedCampers: a.boolean(),
     }),
 
+    Recommendation: a.model({
+        camperUserSub: a.id().required(),
+        camper: a.belongsTo('CamperProfile', 'camperUserSub'),
+        filepath: a.string().authorization((allow) => [
+            allow.groups(["ADMINS"]), 
+            allow.groups(["ROTARIANS"]).to(["read"]), 
+            allow.guest().to(['read','update']),
+            allow.owner()
+        ]),
+        emailAddress: a.email().required(),
+        camperName: a.string(),
+    })
+    .authorization((allow) => [
+        allow.owner(),
+        allow.group("ADMINS").to(['create', 'read', 'update', 'delete']),
+        allow.group("ROTARIANS").to(['read']),
+        allow.guest().to(['read']),
+    ]),
+
     CamperDocument: a.model({
         camperUserSub: a.id().required(),
         camper: a.belongsTo('CamperProfile', 'camperUserSub'),
@@ -93,11 +118,15 @@ const schema = a.schema({
         templateId: a.id().required(),
         template: a.belongsTo('DocumentTemplate', 'templateId'),
         owner: a.string(),
+        approved: a.boolean().default(true),
     })
     .identifier(['camperUserSub', 'templateId'])
+    .secondaryIndexes((index) => [index('camperUserSub')])
     .authorization((allow) => [
         allow.owner(),
-        allow.group("ADMINS").to(["read", "create","update", "delete"])
+        allow.group("ROTARIANS").to(["read"]),
+        allow.group("ADMINS").to(["read", "create","update", "delete"]),
+
     ]),
 
     DocumentTemplate: a.model({
@@ -115,8 +144,10 @@ const schema = a.schema({
     ]),
 
     Camp: a.model({
+        name: a.string(),
         startDate: a.datetime().required(),
         endDate: a.datetime().required(),
+        applicationOpenDate: a.datetime().required(),
         applicationDeadline: a.datetime().required(),
         medicalFormDeadline: a.datetime(),
         camperProfiles: a.hasMany('CamperProfile', 'campId'),
@@ -154,7 +185,7 @@ const schema = a.schema({
         .identifier(['userSub'])
         .authorization((allow) => [
             allow.owner(),
-            allow.group("ADMINS").to(["read", "update", "delete"]),
+            allow.group("ADMINS").to(["create", "read", "update", "delete"]),
             allow.group("NEW").to(["create", "read"])
         ]),
 
@@ -175,7 +206,7 @@ const schema = a.schema({
 
     CamperProfile: a.model(CamperProfileModel)
         .identifier(['userSub'])
-        .secondaryIndexes((index) => [index('rotaryClubId')])
+        .secondaryIndexes((index) => [index('campId')])
         .authorization((allow) => [
             allow.owner(),
             allow.group("ROTARIANS").to(["read"]),
@@ -243,6 +274,26 @@ const schema = a.schema({
         .handler(a.handler.function(getUser))
         .returns(a.json()),
 
+    sendEmail: a
+        .mutation()
+        .arguments({
+            to: a.string().array().required(),
+            subject: a.string().required(),
+            body: a.string().required(),
+            replyTo: a.string()
+        })
+        .authorization((allow) => [allow.authenticated()])
+        .handler(a.handler.function(sendEmail))
+        .returns(a.json()),
+        
+    generateCamperPdf: a
+        .query()
+        .arguments({
+            camperSub: a.string().required()
+        })
+        .authorization((allow) => [allow.group("ADMINS"), allow.group("ROTARIANS")])
+        .handler(a.handler.function(generateCamperPdf))
+        .returns(a.string()),
     // generateInviteCode: a
     //     .mutation()
     //     .authorization((allow) => [allow.group("ADMINS")])
@@ -268,7 +319,9 @@ const schema = a.schema({
     //     .authorization((allow) => [allow.group("ADMINS"), allow.group("ROTARIANS")])
     //     .handler(a.handler.function(createCamperUser))
     //     .returns(a.json())
-})
+}).authorization((allow) => [
+    allow.resource(generateCamperPdf).to(["query"]),
+]);
 
 export type Schema = ClientSchema<typeof schema>;
 

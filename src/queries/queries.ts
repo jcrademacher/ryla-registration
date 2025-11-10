@@ -1,14 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { AuthUser, fetchAuthSession } from "aws-amplify/auth";
-import { CamperProfileSchemaType, getCamperProfile, getCamperStatus, getCamperYear, getRotarianReviewFromCamperSub, listCamperProfilesByRotaryClub } from "../api/apiCamperProfile";
+import { getCamperProfile, getRotarianReviewFromCamperSub, getCamperYearByUserSub} from "../api/apiCamperProfile";
 import { getUser, getUserAttributes, getUserGroups, listAllUsers, listGroupsForUser } from "../api/auth";
-import { getCamperApplicationFilename, getCamperDocument, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
+import { getCamperApplicationFilename, getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
 import { getRotarianProfile } from "../api/apiRotarianProfile";
 import { AuthGroup } from "../../amplify/auth/utils";
-import { listCamps } from "../api/apiCamp";
-import { createFromISO } from "../utils/datetime";
 import { listCamperDocuments } from "../api/apiDocuments";
 import { getRotaryClub, listRotaryClubs } from "../api/apiRotaryClub";
+import { getRecommendationUnauthenticated, getRecommendations } from "../api/apiRecommendations";
+import { queryOptions } from '@tanstack/react-query'
+import { useContext } from "react";
+import { AuthContext } from "../App";
+import { getActiveCamp } from "../api/apiCamp";
 
 export function useUserQuery(user: AuthUser | undefined) {
     return useQuery({
@@ -30,7 +33,8 @@ export function useUserQuery(user: AuthUser | undefined) {
             }
         },
         enabled: !!user,
-        staleTime: 60 * 1000 * 60
+        staleTime: 5 * 60 * 1000,
+        refetchInterval: 5 * 60 * 1000
     });
 }
 
@@ -45,13 +49,12 @@ export function useCamperProfileQuery(userSub?: string | null) {
                 return getCamperProfile(userSub);
             }
         },
-        enabled: !!userSub,
-        staleTime: 60 * 1000 * 60
+        enabled: !!userSub
     });
 }
 
-export function useRotarianReviewQuery(camperSub?: string | null) {
-    return useQuery({
+function rotarianReviewQueryOptions(camperSub?: string | null) {
+    return queryOptions({
         queryKey: ["rotarianReview", camperSub],
         queryFn: async () => {
             if (!camperSub) {
@@ -61,10 +64,12 @@ export function useRotarianReviewQuery(camperSub?: string | null) {
                 return await getRotarianReviewFromCamperSub(camperSub);
             }
         },
-        staleTime: 60 * 1000,
-        refetchInterval: 60 * 1000,
         enabled: !!camperSub
     });
+}
+
+export function useRotarianReviewQuery(camperSub?: string | null) {
+    return useQuery(rotarianReviewQueryOptions(camperSub));
 }
 
 export function useCamperApplicationFilenameQuery(userSub: string | undefined) {
@@ -127,7 +132,6 @@ export function useListGroupsForUserQuery(userSub: string | undefined) {
         },
         enabled: !!userSub,
         select: (data): AuthGroup[] => data.Groups.map((g: { GroupName: string }) => g.GroupName),
-        staleTime: 60 * 1000 * 60
     });
 }
 
@@ -142,20 +146,19 @@ export function useRotarianProfileQuery(userSub: string | undefined) {
             return getRotarianProfile(userSub);
         },
         enabled: !!userSub,
-        staleTime: 10*1000
     });
 }
 
-export function useListCamperProfilesByRotaryClubQuery(rotaryClub: string | null) {
-    return useQuery({
-        queryKey: ["camperProfiles", rotaryClub],
-        queryFn: () => {
-            return listCamperProfilesByRotaryClub(rotaryClub);
-        },
-        staleTime: 60*1000,
-        refetchInterval: 60*1000
-    });
-}
+// export function useListCamperProfilesByRotaryClubQuery(rotaryClub: string | null) {
+//     return useQuery({
+//         queryKey: ["camperProfilesByRotaryClub", rotaryClub],
+//         queryFn: () => {
+//             return listCamperProfilesByRotaryClub(rotaryClub);
+//         },
+//         refetchInterval: 60*1000
+//     });
+// }
+
 
 export function useGetUserEmailQuery(username: string | undefined) {
     return useQuery({
@@ -176,35 +179,36 @@ export function useGetUserEmailQuery(username: string | undefined) {
             }
         },
         enabled: !!username,
-        staleTime: 60*1000
     });
 }
 
-export function useCamperYearQuery(camperProfile: CamperProfileSchemaType | null) {
+export function useCamperYearQuery() {
+    const { attributes: { sub }} = useContext(AuthContext);
+
     return useQuery({
-        queryKey: ["camperYear"],
+        queryKey: ['camperYear', sub],
         queryFn: async () => {
-            // first attempt to get the year from the camper's profile
-            if(camperProfile) {
-                return await getCamperYear(camperProfile);
+            if(!sub) {
+                throw new Error("User sub is required");
             }
             
-            // if the camper's profile doesn't have a year, we need to find the open camp year
-            const camps = await listCamps();
+            const year = await getCamperYearByUserSub(sub);
 
-            if(camps) {
-                const openCamps = camps.filter((camp) => {
-                    const applicationDeadline = createFromISO(camp.applicationDeadline);
-                    return applicationDeadline.diffNow().toMillis() > 0;
-                });
-
-                if(openCamps.length > 0) {
-                    return openCamps[0];
-                }
+            if(year) {
+                return year;
             }
 
-            // reaching here means that no camps were found
-            return null;
+            return getActiveCamp();
+        },
+        enabled: !!sub,
+    });
+}
+
+export function useActiveCampQuery() {
+    return useQuery({
+        queryKey: ['activeCamp'],
+        queryFn: () => {
+            return getActiveCamp();
         }
     });
 }
@@ -218,23 +222,21 @@ export function useDocumentTemplatesByCampQuery(campId?: string | null) {
             }
             return listDocumentTemplatesByCamp(campId);
         },
-        staleTime: 60 * 1000, // 1 minute
         enabled: !!campId
     });
 }
 
 export function useCamperDocumentsQuery(camperUserSub?: string | null) {
-    const { data: camperProfile } = useCamperProfileQuery(camperUserSub);
 
     return useQuery({
         queryKey: ["camperDocuments", camperUserSub],
         queryFn: () => {
-            if(!camperProfile) {
+            if(!camperUserSub) {
                 throw new Error("Camper profile null when needed for camper documents");
             }
-            return listCamperDocuments(camperProfile);
+            return listCamperDocuments(camperUserSub);
         },
-        enabled: !!camperProfile,
+        enabled: !!camperUserSub,
     });
 }
 
@@ -254,18 +256,19 @@ export function useCamperDocumentQuery(camperUserSub?: string | null, templateId
     });
 }
 
-export function useCamperStatusQuery(camperUserSub?: string | null) {
-    const { data: camperProfile } = useCamperProfileQuery(camperUserSub);
-
+export function useDocumentStatusQuery(camperUserSub?: string | null, campId?: string | null) {
     return useQuery({
-        queryKey: ["camperStatus", camperUserSub],
+        queryKey: ["documentStatus", campId, camperUserSub],
         queryFn: () => {
-            if(!camperProfile) {
-                throw new Error("Camper profile null when needed for camper status");
+            if(!campId) {
+                throw new Error("Camp id is required");
             }
-            return getCamperStatus(camperProfile);
+            if(!camperUserSub) {
+                throw new Error("Camper user sub is required");
+            }
+            return getDocumentStatus(camperUserSub, campId);
         },
-        enabled: !!camperProfile,
+        enabled: !!campId && !!camperUserSub,
     });
 }
 
@@ -275,11 +278,10 @@ export function useRotaryClubQuery(rotaryClubId?: string | null) {
         queryKey: ["rotaryClub", rotaryClubId],
         queryFn: () => {
             if(!rotaryClubId) {
-                throw new Error("Camper profile data missing to get rotary club");
+                return null;
             }
             return getRotaryClub(rotaryClubId);
-        },
-        enabled: !!rotaryClubId
+        }
     });
 }
 
@@ -289,5 +291,34 @@ export function useListRotaryClubsQuery() {
         queryFn: () => {
             return listRotaryClubs();
         }
+    });
+}
+
+export function useRecommendationQuery(camperUserSub?: string | null) {
+    const { data: camperProfile } = useCamperProfileQuery(camperUserSub);
+
+    return useQuery({
+        queryKey: ["recommendation", camperUserSub],
+        queryFn: async () => {
+            if(!camperProfile) {
+                throw new Error("Camper user sub is required");
+            }
+            const recs = await getRecommendations(camperProfile);
+            return recs?.length && recs.length > 0 ? recs[0] : null;
+        },
+        enabled: !!camperProfile,
+    });
+}
+
+export function useRecommendationUnauthenticatedQuery(recId?: string | null) {
+    return useQuery({
+        queryKey: ['recommendation', recId],
+        queryFn: () => {
+            if(!recId) {
+                throw new Error("Recommendation id is required");
+            }
+            return getRecommendationUnauthenticated(recId);
+        },
+        enabled: !!recId,
     });
 }

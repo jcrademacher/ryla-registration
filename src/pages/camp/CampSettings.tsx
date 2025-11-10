@@ -6,7 +6,7 @@ import { UpdateCampSchemaType } from '../../api/apiCamp';
 import { DocumentTemplateSchemaType, getUrlToDocument } from '../../api/apiDocuments';
 import { useUpdateCampMutation, useUploadDocumentTemplateMutation } from "../../queries/adminMutations";
 import { Form, Button, Row as BsRow, Col, Table, Placeholder } from "react-bootstrap";
-import { createEDT, createFromISO, formatDateHTML } from "../../utils/datetime";
+import { createEDT, formatDateHTML } from "../../utils/datetime";
 import { DateTime } from "luxon";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileAlt, faEye, faEdit } from "@fortawesome/free-solid-svg-icons";
@@ -23,6 +23,7 @@ type EditCampForm = {
     startDate: string;
     endDate: string;
     applicationDeadline: string;
+    applicationOpenDate: string;
 }
 
 type DocumentTemplateForm = {
@@ -64,7 +65,7 @@ function DocumentForm({ values, template, onDone }: DocumentFormProps) {
                 }
             });
         }
-    
+
     };
 
     const documentForm = useForm<DocumentTemplateForm>({
@@ -151,9 +152,10 @@ export const CampSettings = () => {
 
     const { register, handleSubmit, formState: { errors }, reset } = useForm<EditCampForm>({
         values: {
-            startDate: formatDateHTML(createFromISO(camp?.startDate ?? "")),
-            endDate: formatDateHTML(createFromISO(camp?.endDate ?? "")),
-            applicationDeadline: formatDateHTML(createFromISO(camp?.applicationDeadline ?? "")),
+            startDate: formatDateHTML(createEDT(camp?.startDate ?? "")),
+            endDate: formatDateHTML(createEDT(camp?.endDate ?? "")),
+            applicationDeadline: formatDateHTML(createEDT(camp?.applicationDeadline ?? "")),
+            applicationOpenDate: formatDateHTML(createEDT(camp?.applicationOpenDate ?? "")),
         }
     });
 
@@ -168,12 +170,14 @@ export const CampSettings = () => {
         const startDate = startDateObj.toISO();
         const endDate = endDateObj.toISO();
         const applicationDeadline = createEDT(data.applicationDeadline).toISO();
+        const applicationOpenDate = createEDT(data.applicationOpenDate).toISO();
 
         const newCamp: UpdateCampSchemaType = {
             id: camp?.id ?? "",
             startDate: startDate || undefined,
             endDate: endDate || undefined,
             applicationDeadline: applicationDeadline || undefined,
+            applicationOpenDate: applicationOpenDate || undefined,
         }
 
         updateCamp(newCamp, {
@@ -223,7 +227,7 @@ export const CampSettings = () => {
 
     return (
         <div className="side-pad-20">
-            <h3>{camp ? `RYLA ${DateTime.fromISO(camp.startDate).year}` : ""} Settings</h3>
+            <h3>{camp ? `RYLA ${createEDT(camp.startDate).year}` : ""} Settings</h3>
             <ThinSpacer />
 
             <Form onSubmit={handleSubmit(onSubmit)}>
@@ -231,7 +235,7 @@ export const CampSettings = () => {
                 <BsRow>
                     <Col xs={6}>
                         <Form.Group>
-                            <Form.Label>Start Date</Form.Label>
+                            <Form.Label>Start Date (Eastern Time)</Form.Label>
                             <Form.Control
                                 type="datetime-local"
                                 {...register('startDate', {
@@ -259,7 +263,7 @@ export const CampSettings = () => {
                     </Col>
                     <Col xs={6}>
                         <Form.Group>
-                            <Form.Label>End Date</Form.Label>
+                            <Form.Label>End Date (Eastern Time)</Form.Label>
                             <Form.Control
                                 type="datetime-local"
                                 {...register('endDate', {
@@ -289,7 +293,31 @@ export const CampSettings = () => {
                     </Col>
                 </BsRow>
                 <BsRow>
-                    <Col xs={12}>
+                    <Col xs={6}>
+                        <Form.Group>
+                            <Form.Label>Application Open Date</Form.Label>
+                            <Form.Control
+                                type="datetime-local"
+                                {...register('applicationOpenDate', {
+                                    required: true,
+                                    validate: (applicationOpenDate, { applicationDeadline }) => {
+                                        const applicationDeadlineObj = createEDT(applicationDeadline);
+                                        const applicationOpenDateObj = createEDT(applicationOpenDate);
+
+                                        if (applicationOpenDateObj > applicationDeadlineObj) {
+                                            return 'Application open date must be before application deadline';
+                                        }
+                                        return true;
+                                    }
+                                })}
+                                isInvalid={!!errors.applicationOpenDate}
+                            />
+                            <Form.Control.Feedback type="invalid">
+                                {errors.applicationOpenDate?.message || 'Application open date is required'}
+                            </Form.Control.Feedback>
+                        </Form.Group>
+                    </Col>
+                    <Col xs={6}>
                         <Form.Group>
                             <Form.Label>Application Deadline</Form.Label>
                             <Form.Control
@@ -328,7 +356,7 @@ export const CampSettings = () => {
                             Documents
                         </h5>
                         <ThinSpacer />
-                        Add documents that campers must complete here. Once documents are added, they can only be modified. They cannot be deleted.  
+                        Add documents that campers must complete here. Once documents are added, they can only be modified. They cannot be deleted.
                     </div>
                     <DocumentForm />
                     <div className="document-templates-table">
@@ -419,14 +447,14 @@ const DocumentRow = ({ doc }: { doc: DocumentTemplateSchemaType }) => {
         return (
             <tr>
                 <td colSpan={5}>
-                    <DocumentForm 
+                    <DocumentForm
                         template={doc}
                         values={{
                             name: doc.name ?? "",
                             type: doc.type ?? "",
                             required: doc.required ?? false,
                             files: null,
-                        }} 
+                        }}
                         onDone={() => setEditing(false)}
                     />
                 </td>

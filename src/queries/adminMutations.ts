@@ -14,6 +14,7 @@ import { TransferProgressEvent } from "aws-amplify/storage";
 import { CreateDocumentTemplateSchemaType, deleteDocumentTemplate, DocumentTemplateSchemaType, uploadDocumentTemplate } from "../api/apiDocuments";
 import { createRotaryClub, CreateRotaryClubSchemaType, UpdateRotaryClubSchemaType, updateRotaryClub } from "../api/apiRotaryClub";
 
+
 function checkForExistingApplicationsOpen(thisCamp: CampSchemaType | UpdateCampSchemaType | CreateCampSchemaType, otherCamps: CampSchemaType[] | null | undefined) {
     const now = DateTime.now();
 
@@ -133,3 +134,19 @@ export function useUpdateRotaryClubMutation() {
         }
     });
 }
+
+
+
+// export function useUploadCamperDocumentMutation() {
+//     return useMutation({
+//         mutationKey: ['uploadCamperDocument'],
+//         mutationFn: ({ document, file, onProgress }: { 
+//             document: CreateCamperDocumentSchemaType, 
+//             file?: File,
+//             onProgress?: (event: TransferProgressEvent) => void
+//         }) => {
+//             return uploadCamperDocument(document, file, onProgress);
+//         }
+//     });
+// }
+

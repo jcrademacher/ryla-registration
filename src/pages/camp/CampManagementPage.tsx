@@ -21,7 +21,7 @@ import {
     RowSelectionState 
 } from '@tanstack/react-table';
 
-import { CamperProfileSchemaType, CamperStatusSchemaType } from '../../api/apiCamperProfile';
+import { CamperProfileSchemaType } from '../../api/apiCamperProfile';
 import { Placeholder } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faClockRotateLeft, faTimes, faXmark } from '@fortawesome/free-solid-svg-icons';
@@ -34,7 +34,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { TableActions } from './TableActions';
 import { CampSettings } from './CampSettings';
 import { functionalQueryClient } from '../../main';
-import { useCamperStatusQuery, useRotarianReviewQuery, useRotaryClubQuery } from '../../queries/queries';
+import { useDocumentStatusQuery, useRotarianReviewQuery, useRotaryClubQuery } from '../../queries/queries';
 import { PlaceholderElement } from '../../components/PlaceholderElement';
 import { RotarianReviewSchemaType } from '../../api/apiRotarianReview';
 
@@ -125,24 +125,38 @@ const columns = [
             return <StatusHeader title="D" helpText="Camper has completed all required documents (including mailed forms)" />;
         },
         cell: (props) => {
-            const { data: camperStatus, isLoading: isCamperStatusLoading } = useCamperStatusQuery(props.row.original.userSub);
-            return <StatusColumn status={camperStatus?.documentsComplete} isLoading={isCamperStatusLoading} />;
+            const { data: documentsComplete, isLoading: isDocumentsCompleteLoading } = useDocumentStatusQuery(props.row.original.userSub, props.row.original.campId);
+            return <StatusColumn status={documentsComplete} isLoading={isDocumentsCompleteLoading} />;
         },
         filterFn: (row, _, filterValue) => {
-            const camperStatus = functionalQueryClient.getQueryData(['camperStatus', row.original.userSub]) as CamperStatusSchemaType | null | undefined;
-            return camperStatus?.documentsComplete === filterValue;
+            const documentsComplete = functionalQueryClient.getQueryData(
+                ['documentStatus', row.original.campId, row.original.userSub]) as boolean | null | undefined;
+            return documentsComplete === filterValue;
         }
     }),
-    columnHelper.accessor('attendanceConfirmations', {
-        header: () => <StatusHeader title="C" helpText="Camper has confirmed attendance" />,
-        cell: (props) => <StatusColumn status={!!props.getValue()} />,
-        filterFn: (row, _, filterValue) => {
-            return (row.original.attendanceConfirmations ?? 0) >= filterValue;
-        }
-    }),
-    columnHelper.accessor('createdAt', {
-        header: 'Created At',
-        cell: info => createFromISO(info.getValue()).toLocaleString(DateTime.DATETIME_MED),
+    // columnHelper.accessor('attendanceConfirmations', {
+    //     header: () => <StatusHeader title="C" helpText="Camper has confirmed attendance" />,
+    //     cell: (props) => <StatusColumn status={!!props.getValue()} />,
+    //     filterFn: (row, _, filterValue) => {
+    //         return (row.original.attendanceConfirmations ?? 0) >= filterValue;
+    //     }
+    // }),
+    // columnHelper.accessor('createdAt', {
+    //     header: 'Created At',
+    //     cell: info => createFromISO(info.getValue()).toLocaleString(DateTime.DATETIME_MED),
+    //     sortingFn: luxonSortingFn
+    // }),
+    columnHelper.accessor('applicationSubmittedAt', {
+        header: 'Submitted At',
+        cell: info => {
+            const val = info.getValue();
+            if(val) {
+                return createFromISO(val).toLocaleString(DateTime.DATETIME_MED);
+            }
+            else {
+                return ''; 
+            }
+        },
         sortingFn: luxonSortingFn
     }),
     columnHelper.accessor('email', {
@@ -197,7 +211,10 @@ const columns = [
                     Failed
                 </div>;
             }
-            return <PlaceholderElement isLoading={isPendingRotaryClub} props={{ xs: 7 }}>{rotaryClub?.name}</PlaceholderElement>;
+            if(props.row.original.rotaryClubId)
+                return <PlaceholderElement isLoading={isPendingRotaryClub} props={{ xs: 7 }}>{rotaryClub?.name}</PlaceholderElement>;
+            else 
+                return null;
         }
     }),
     columnHelper.accessor('guidanceCounselorName', {
@@ -380,7 +397,7 @@ export const CampManagementPage = () => {
     // const tableData = useMemo(() => fakeData, []);
 
     const [sorting, setSorting] = useState<SortingState>([{
-        id: 'createdAt',
+        id: 'applicationSubmittedAt',
         desc: true,
     }]);
 

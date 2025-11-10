@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCamp, listCamps } from "../api/apiCamp";
-import { listCamperProfilesByCamp, listRotarianReviewsByCamp, observeCamperProfilesByCamp } from "../api/apiCamperProfile";
+import { generateCamperPdf, listCamperProfilesByCampId, observeCamperProfilesByCamp } from "../api/apiCamperProfile";
 import { useParams } from "react-router";
 import { useEffect } from "react";
 
@@ -11,19 +11,20 @@ export function useListCampsQuery() {
     });
 }
 
-export function useCamperProfilesByCampQuery() {
-    const { campId } = useParams();
+export function useCamperProfilesByCampQuery(campIdArg?: string | null, rotaryClubId?: string | null) {
+    let { campId } = useParams();
+
+    campId = campIdArg ?? campId;
 
     return useQuery({
-        queryKey: ['camperProfilesByCamp', campId],
+        queryKey: ['camperProfilesByCamp', campId, rotaryClubId],
         queryFn: () => {
             if (!campId) {
-                throw new Error("Camp ID is required");
+                return [];
             }
-            return listCamperProfilesByCamp(campId);
+            return listCamperProfilesByCampId(campId, rotaryClubId);
         },
         staleTime: 60 * 1000, // 1 minute
-        enabled: !!campId
     });
 }
 
@@ -38,22 +39,6 @@ export function useCampQuery() {
             }
             return getCamp(campId);
         },
-        staleTime: 60 * 1000, // 1 minute
-        enabled: !!campId
-    });
-}
-
-export function useRotarianReviewsByCampQuery(campId?: string) {
-
-    return useQuery({
-        queryKey: ['rotarianReviewsByCamp', campId],
-        queryFn: () => {
-            if (!campId) {
-                throw new Error("Camp ID is required");
-            }
-            return listRotarianReviewsByCamp(campId);
-        },
-        staleTime: 60 * 1000, // 1 minute
         enabled: !!campId
     });
 }
@@ -69,4 +54,17 @@ export function useObserveCamperProfilesByCampQuery(campId?: string) {
             return () => sub.unsubscribe();
         }
     }, [campId, queryClient]);
+}
+
+export function useGenerateCamperPdfQuery(camperSub?: string | null) {
+    return useQuery({
+        queryKey: ['generateCamperPdf', camperSub],
+        queryFn: () => {
+            if(!camperSub) {
+                throw new Error('Camper Sub is required');
+            }
+            return generateCamperPdf(camperSub);
+        },
+        enabled: !!camperSub
+    });
 }

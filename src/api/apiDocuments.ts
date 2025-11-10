@@ -2,7 +2,6 @@ import { getProperties, list, TransferProgressEvent, uploadData } from 'aws-ampl
 import { getUrl, remove } from 'aws-amplify/storage';
 import { client, checkErrors } from '.';
 import { Schema } from '../../amplify/data/resource';
-import { CamperProfileSchemaType } from './apiCamperProfile';
 
 export type DocumentTemplateSchemaType = Schema['DocumentTemplate']['type'];
 export type CreateDocumentTemplateSchemaType = Schema['DocumentTemplate']['createType'];
@@ -249,10 +248,16 @@ export async function uploadCamperDocument(
 
     let retval;
     if(existingEntry) {
-        retval = await client.models.CamperDocument.update(document, { authMode: "userPool" });
+        retval = await client.models.CamperDocument.update({
+            ...document,
+            owner: document.camperUserSub
+        }, { authMode: "userPool" });
     }
     else {
-        retval = await client.models.CamperDocument.create(document, { authMode: "userPool" });
+        retval = await client.models.CamperDocument.create({
+            ...document,
+            owner: document.camperUserSub
+        }, { authMode: "userPool" });
     }
 
     checkErrors(retval.errors);
@@ -266,10 +271,40 @@ export async function getCamperDocument(camperUserSub: string, templateId: strin
     return retval.data;
 }
 
-export async function listCamperDocuments(camperProfile: CamperProfileSchemaType): Promise<CamperDocumentSchemaType[] | null> {
-    const documents = await camperProfile.documents();
+export async function listCamperDocuments(camperUserSub: string): Promise<CamperDocumentSchemaType[] | null> {
+    const documents = await client.models.CamperDocument.listCamperDocumentByCamperUserSub({ camperUserSub }, { authMode: "userPool" });
     checkErrors(documents?.errors);
 
     return documents?.data ?? null;
+}
+
+export async function updateCamperDocumentStatus(
+    camperUserSub: string, 
+    templateId: string, 
+    updates: { approved?: boolean; received?: boolean }
+): Promise<CamperDocumentSchemaType | null> {
+    const retval = await client.models.CamperDocument.update({
+        camperUserSub,
+        templateId,
+        ...updates
+    }, { authMode: "userPool" });
+    
+    checkErrors(retval.errors);
+    return retval.data;
+}
+
+export async function getDocumentStatus(camperUserSub: string, campId: string): Promise<boolean> {
+
+    const templates = await listDocumentTemplatesByCamp(campId);
+    const query = await listCamperDocuments(camperUserSub);
+
+    if(query) {
+        return templates
+            ?.filter(template => template.required && template.type !== "viewonly")
+            .every(template => query.some(document => document.templateId === template.id && document.approved && document.received)) ?? false;
+    }
+    else {
+        return false;
+    }
 }
 

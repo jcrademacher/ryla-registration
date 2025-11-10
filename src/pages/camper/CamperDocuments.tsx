@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { Badge } from "react-bootstrap";
-import { useDocumentTemplatesByCampQuery, useCamperYearQuery, useCamperProfileQuery, useUrlToDocumentQuery, useCamperDocumentQuery } from "../../queries/queries";
+import { useDocumentTemplatesByCampQuery, useCamperProfileQuery, useUrlToDocumentQuery, useCamperDocumentQuery } from "../../queries/queries";
 import { DocumentTemplateSchemaType } from "../../api/apiDocuments";
 import { AuthContext } from "../../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -9,6 +9,7 @@ import { FileInputGroup } from "../../components/forms";
 
 import {
     faCheckCircle,
+    faExclamationTriangle,
     faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { PlaceholderElement } from "../../components/PlaceholderElement";
@@ -41,6 +42,7 @@ const DocumentComponent: React.FC<DocumentComponentProps> = ({
                     camperUserSub: camperProfile.userSub,
                     templateId: template.id,
                     received: true,
+                    approved: true,
                 },
                 file,
                 onProgress
@@ -99,8 +101,11 @@ const DocumentComponent: React.FC<DocumentComponentProps> = ({
         if(template.type === "viewonly") {
             return null;
         }
-        if (thisDocument?.filepath || thisDocument?.received) {
+        if ((thisDocument?.filepath || thisDocument?.received) && thisDocument?.approved) {
             return <Badge bg="success"><FontAwesomeIcon icon={faCheckCircle} className="me-1" />Received</Badge>
+        }
+        else if ((thisDocument?.filepath || thisDocument?.received) && !thisDocument?.approved) {
+            return <Badge bg="warning"><FontAwesomeIcon icon={faExclamationTriangle} className="me-1" />Must be resubmitted</Badge>
         }
         else {
             return <Badge bg="danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Not received</Badge>
@@ -134,8 +139,7 @@ export function CamperImportantDocuments() {
     const authContext = useContext(AuthContext);
 
     const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
-    const { data: camp } = useCamperYearQuery(camperProfile ?? null);
-    const { data: documentTemplates, isPending: isLoadingDocumentTemplates } = useDocumentTemplatesByCampQuery(camp?.id);
+    const { data: documentTemplates, isPending: isLoadingDocumentTemplates } = useDocumentTemplatesByCampQuery(camperProfile?.campId);
 
     // Separate documents into three categories
     const viewOnlyDocuments = documentTemplates?.filter(doc => doc.type === "viewonly") || [];

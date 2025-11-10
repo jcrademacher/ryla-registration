@@ -2,26 +2,25 @@ import { client, checkErrors } from ".";
 import { Schema } from "../../amplify/data/resource";
 import { RotarianReviewSchemaType } from "./apiRotarianReview";
 import { CampSchemaType, getCamp } from "./apiCamp";
-import { listCamperDocuments, listDocumentTemplatesByCamp } from "./apiDocuments";
 
 export type CreateCamperProfileSchemaType = Schema['CamperProfile']['createType'];
 export type UpdateCamperProfileSchemaType = Schema['CamperProfile']['updateType'];
 export type CamperProfileSchemaType = Schema['CamperProfile']['type'];
 
-export async function listCamperProfilesByRotaryClub(rotaryClubId?: string | null): Promise<CamperProfileSchemaType[] | null> {
-    let retval;
-    if (rotaryClubId) {
-        retval = await client.models.CamperProfile.listCamperProfileByRotaryClubId({
-            rotaryClubId: rotaryClubId
-        }, { authMode: "userPool" });
-    }
-    else {
-        retval = await client.models.CamperProfile.list({ authMode: "userPool" });
-    }
+// export async function listCamperProfilesByRotaryClub(rotaryClubId?: string | null): Promise<CamperProfileSchemaType[] | null> {
+//     let retval;
+//     if (rotaryClubId) {
+//         retval = await client.models.CamperProfile.listCamperProfileByRotaryClubId({
+//             rotaryClubId: rotaryClubId
+//         }, { authMode: "userPool" });
+//     }
+//     else {
+//         retval = await client.models.CamperProfile.list({ authMode: "userPool" });
+//     }
 
-    checkErrors(retval.errors);
-    return retval.data;
-}
+//     checkErrors(retval.errors);
+//     return retval.data;
+// }
 
 export function observeCamperProfilesByCamp(campId: string, updateFn: (data: CamperProfileSchemaType[]) => void) {
     return client.models.CamperProfile.observeQuery({
@@ -37,25 +36,24 @@ export function observeCamperProfilesByCamp(campId: string, updateFn: (data: Cam
     });
 }
 
-export async function listCamperProfilesByCamp(campId: string): Promise<CamperProfileSchemaType[] | null> {
-    const camp = await getCamp(campId);
-    const profiles = await camp?.camperProfiles({
-        limit: 300
-    });
+// https://www.alexdebrie.com/posts/dynamodb-filter-expressions/
+// https://github.com/aws-amplify/amplify-js/issues/2901
 
-    checkErrors(profiles?.errors);
-
-    return profiles?.data ?? null;
-}
-
-export async function listRotarianReviewsByCamp(campId: string) {
-    const retval = await client.models.Camp.get({ id: campId }, {
-        authMode: "userPool",
-        selectionSet: ["camperProfiles.rotarianReview.*"]
+export async function listCamperProfilesByCampId(campId: string, rotaryClubId?: string | null): Promise<CamperProfileSchemaType[] | null> {
+    const retval = await client.models.CamperProfile.listCamperProfileByCampId({
+        campId: campId,
+    }, { 
+        authMode: "userPool", 
+        filter: rotaryClubId ? {
+            rotaryClubId: {
+                eq: rotaryClubId
+            }
+        } : undefined,
+        limit: 500 
     });
     checkErrors(retval.errors);
 
-    return retval.data;
+    return retval.data ?? null;
 }
 
 export async function getCamperProfile(userSub: string): Promise<CamperProfileSchemaType | null> {
@@ -74,6 +72,7 @@ export async function createCamperProfile(camperProfile: CreateCamperProfileSche
 }
 
 export async function updateCamperProfile(camperProfile: UpdateCamperProfileSchemaType): Promise<CamperProfileSchemaType | null> {
+    console.log("Updating camper profile with data:", camperProfile);
     const retval = await client.models.CamperProfile.update(camperProfile, {
         authMode: "userPool"
     });
@@ -114,32 +113,24 @@ export async function getCamperYear(camperProfile: CamperProfileSchemaType): Pro
     return retval.data ?? null;
 }
 
-export type CamperStatusSchemaType = {
-    profileComplete: boolean;
-    applicationComplete: boolean;
-    documentsComplete: boolean;
+export async function getCamperYearByUserSub(userSub: string): Promise<CampSchemaType | null> {
+    const retval = await client.models.CamperProfile.get({ userSub }, {
+        authMode: "userPool",
+        selectionSet: ["campId"]
+    });
+    checkErrors(retval.errors);
+
+    if(retval.data) {
+        return getCamp(retval.data.campId);
+    }
+    
+    return null;
 }
 
-export async function getCamperStatus(camperProfile: CamperProfileSchemaType): Promise<CamperStatusSchemaType> {
-    const retval = {
-        profileComplete: false,
-        applicationComplete: false,
-        documentsComplete: false,
-    }
+export async function generateCamperPdf(camperSub: string): Promise<CamperProfileSchemaType | null> {
+    const retval = await client.queries.generateCamperPdf({ camperSub });
+    console.log(retval);
+    // checkErrors(retval.errors);
 
-    const templates = await listDocumentTemplatesByCamp(camperProfile.campId);
-    const query = await listCamperDocuments(camperProfile);
-
-    if(query) {
-        retval.documentsComplete = 
-            templates
-            ?.filter(template => template.required)
-            .every(template => query.some(document => document.templateId === template.id)) ?? false;
-    }
-
-    retval.profileComplete = camperProfile.profileComplete ?? false;
-    retval.applicationComplete = camperProfile.applicationComplete ?? false;
-
-    return retval;
+    return null;
 }
-

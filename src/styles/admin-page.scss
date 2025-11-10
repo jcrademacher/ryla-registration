@@ -266,6 +266,7 @@
             // border-collapse: collapse;
             z-index: 10;
             padding: 10px 5px 10px 5px;
+            text-wrap: nowrap;
     
         } 
     }
@@ -282,7 +283,7 @@
         // }
         
         tr.selected {
-            background-color: rgba(colors.$secondary, 0.3);
+            background-color: rgba(colors.$secondary, 0.2);
         }
 
     
@@ -299,8 +300,4 @@
         //     -moz-user-select: none;
         //     -ms-user-select: none;
     }
-}
-
-.camp-settings-modal-body {
-
 }

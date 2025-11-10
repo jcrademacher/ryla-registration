@@ -26,7 +26,7 @@ export const auth = defineAuth({
             userInvitation: {
                 emailSubject: "RYLA REGISTRATION: New Account",
                 emailBody: (user, code) =>
-                    `A RYLA registration account was setup on your behalf. You can now login with username ${user()} and temporary password ${code()}`, 
+                    `A RYLA registration account was setup on your behalf. You can now login with username ${user()} and temporary password ${code()}`,
             },
         },
     },
@@ -34,6 +34,21 @@ export const auth = defineAuth({
         preSignUp: preventSignup,
         postConfirmation: postConfirmationAddToGroup
     },
+    // senders: {
+    //     email: {
+    //         fromEmail: "registration@ryla7780.org",
+    //         fromName: "RYLA Registration",
+    //     },
+    // },
+    // multifactor: {
+    //     mode: 'REQUIRED',
+    //     sms: true,
+    // },
+    // userAttributes: {
+    //     phoneNumber: {
+    //         required: true
+    //     }
+    // },
     groups: AUTH_GROUPS,
     access: (allow) => [
         allow.resource(createRotarianUser).to(["createUser"]),

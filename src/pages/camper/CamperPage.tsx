@@ -6,10 +6,9 @@ import {
     faCheck,
     faEllipsis,
     faTimes,
-    faCircleInfo,
 } from '@fortawesome/free-solid-svg-icons';
-import { Navigate, Route, Routes, useNavigate, useLocation, Link } from 'react-router';
-import { useCamperProfileQuery, useCamperYearQuery, useRotarianReviewQuery } from '../../queries/queries';
+import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router';
+import { useCamperProfileQuery, useCamperYearQuery, useDocumentStatusQuery, useRotarianReviewQuery } from '../../queries/queries';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { CamperProfile } from './CamperProfile';
 import { CamperRotaryClubReview } from './CamperRotaryClubReview';
@@ -17,17 +16,20 @@ import { CamperImportantDocuments } from './CamperDocuments';
 import { CamperApplicationView } from './CamperApplication';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import '../../styles/camper-page.scss';
-import { CampSchemaType } from '../../api/apiCamp';
 import { createFromISO, formatDateFullWithTime } from '../../utils/datetime';
-import { CamperProfileSchemaType } from '../../api/apiCamperProfile';
+import { getCampApplicationStatus } from '../../utils/camp';
+import { NotAcceptingApplications, PreDeadline, PastDeadlineCamper } from '../../components/alerts';
 
 
 const ApplicationTabs = () => {
     const authContext = useContext(AuthContext);
-    const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
     const { data: rotarianReview } = useRotarianReviewQuery(authContext.attributes.sub);
     const location = useLocation();
     const navigate = useNavigate();
+
+    const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
+    const { data: documentsComplete } = useDocumentStatusQuery(camperProfile?.campId, authContext.attributes.sub);
+
 
     // Extract the last part of the pathname to determine active tab
     const pathSegments = location.pathname.split('/');
@@ -38,7 +40,6 @@ const ApplicationTabs = () => {
     const registrationStatus = useMemo(() => {
         const profileComplete = camperProfile?.profileComplete;
         const applicationComplete = camperProfile?.applicationComplete;
-        const documentsComplete = camperProfile?.documentsComplete;
         const rotarianReviewStatus = rotarianReview?.review;
 
         if (profileComplete && applicationComplete && documentsComplete && rotarianReviewStatus === "APPROVED") {
@@ -77,7 +78,7 @@ const ApplicationTabs = () => {
         };
     }, [camperProfile, rotarianReview]);
 
-    const getStepState = useCallback((sectionKey: string): StepState => {
+    const getStepState = (sectionKey: string) => {
         switch (sectionKey) {
             case "profile":
                 if (camperProfile && !camperProfile.profileComplete) {
@@ -105,7 +106,7 @@ const ApplicationTabs = () => {
                 }
                 return "incomplete";
             case "important-documents":
-                if (rotarianReview?.review === "APPROVED" && camperProfile?.documentsComplete) {
+                if (rotarianReview?.review === "APPROVED" && documentsComplete) {
                     return "complete";
                 }
                 else if (rotarianReview?.review === "APPROVED") {
@@ -115,9 +116,9 @@ const ApplicationTabs = () => {
             default:
                 return "incomplete";
         }
-    }, [camperProfile, rotarianReview]);
+    };
 
-    const getStatusIcon = useCallback((stepState: StepState) => {
+    const getStatusIcon = (stepState: StepState) => {
         switch (stepState) {
             case "complete":
                 return <FontAwesomeIcon icon={faCheck} className="text-success" />;
@@ -128,9 +129,9 @@ const ApplicationTabs = () => {
             case "incomplete":
                 return <FontAwesomeIcon icon={faCircle} className="text-muted" />;
         }
-    }, []);
+    };
 
-    const isTabDisabled = useCallback((sectionKey: string): boolean => {
+    const isTabDisabled = (sectionKey: string) => {
         switch (sectionKey) {
             case "profile":
                 return false; // Always accessible
@@ -143,7 +144,7 @@ const ApplicationTabs = () => {
             default:
                 return true;
         }
-    }, [camperProfile, rotarianReview]);
+    };
 
     const handleTabSelect = useCallback((key: string | null) => {
         if (key && !isTabDisabled(key)) {
@@ -153,7 +154,7 @@ const ApplicationTabs = () => {
 
     return (
         <div>
-            <strong>Registration Status: <Badge bg={registrationStatus.color}>{registrationStatus.message}</Badge></strong>
+            <strong>Registration Status: <Badge bg={registrationStatus.color} className={registrationStatus.color === "light" ? "text-dark" : ""}>{registrationStatus.message}</Badge></strong>
             <Tabs
                 activeKey={activeTab}
                 onSelect={handleTabSelect}
@@ -205,26 +206,28 @@ const ApplicationTabs = () => {
     );
 };
 
+// camper year cases:
+// either camperProfile exists or it does not
+// IF PROFILE DOES EXIST: 
+// --- easy case, simply get the camper year given the campId
+// IF PROFILE DOES NOT EXIST:
+// 1. Find camp with the nearest start date in the future
+// 2. create profile with this camp id
+
+// application window status rules:
+// case 1: Applications are not open yet (should indicate that platform is not accepting applications)
+// case 2: Applications are open but the deadline has not yet passed (accepting!)
+// case 3: Deadline has passed but camp has not ended yet (warning students, but should still allow acceptance)
+// -- indicate in admin table that camper submitted late
+// case 4: Camp has ended (no longer accepting applications)
 
 
 export const CamperPage: React.FC = () => {
 
-    const authContext = useContext(AuthContext);
-
     const {
-        data: camperProfile,
-        isLoading: isLoadingCamperProfile,
-        isSuccess: isSuccessCamperProfile
-    } = useCamperProfileQuery(authContext.attributes.sub);
-
-    const {
-        data: camperYear,
-        isLoading: isLoadingCamperYear,
-        isSuccess: isSuccessCamperYear
-    } = useCamperYearQuery(camperProfile ?? null);
-
-    const isLoading = useMemo(() => isLoadingCamperProfile || isLoadingCamperYear, [isLoadingCamperProfile, isLoadingCamperYear]);
-    const isSuccess = useMemo(() => isSuccessCamperProfile && isSuccessCamperYear, [isSuccessCamperProfile, isSuccessCamperYear]);
+        isLoading,
+        isSuccess
+    } = useCamperYearQuery();
 
     let Content;
 
@@ -240,17 +243,11 @@ export const CamperPage: React.FC = () => {
             </Placeholder>
         )
     }
-    else if (isSuccess && camperYear) {
+    else if(isSuccess) {
         Content = (
             <>
-                <CampInformation camperYear={camperYear} />
-                <CamperProfileView camperYear={camperYear} camperProfile={camperProfile ?? null} />
+                <CampInformation/>
             </>
-        )
-    }
-    else if (isSuccess && !camperYear) {
-        Content = (
-            <CampInformation camperYear={null} />
         )
     }
     else {
@@ -272,19 +269,16 @@ export const CamperPage: React.FC = () => {
     );
 };
 
-interface CamperProfileViewProps {
-    camperYear: CampSchemaType | null;
-    camperProfile: CamperProfileSchemaType | null;
-}
-
-function CamperProfileView({ camperProfile }: CamperProfileViewProps) {
+function CamperProfileView() {
     const authContext = useContext(AuthContext);
     // const navigate = useNavigate();
+
+    const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
 
     const {
         data: rotarianReview,
         isPending: isPendingRotarianReview
-    } = useRotarianReviewQuery(authContext.attributes.sub);
+    } = useRotarianReviewQuery();
 
     // useEffect(() => {
     //     if (camperProfile?.profileComplete && !camperProfile?.applicationComplete && !rotarianReview?.review) {
@@ -336,39 +330,31 @@ function CamperProfileView({ camperProfile }: CamperProfileViewProps) {
     )
 }
 
-function CampInformation({ camperYear }: { camperYear: CampSchemaType | null }) {
 
-    if (!camperYear) {
-        return (<div>
-            <Alert variant="danger">
-                <h4>RYLA is not accepting applications at this time</h4>
-                <p>Please check back in the future for updates.</p>
-            </Alert>
-        </div>);
+
+function CampInformation() {
+
+    const {
+        data: camperYear
+    } = useCamperYearQuery();
+
+    const applicationStatus = useMemo(() => getCampApplicationStatus(camperYear), [camperYear]);
+
+    if (applicationStatus === "not-accepting") {
+        return <NotAcceptingApplications />;
     }
 
-    const startDate = useMemo(() => createFromISO(camperYear.startDate), [camperYear.startDate]);
-    const endDate = useMemo(() => createFromISO(camperYear.endDate), [camperYear.endDate]);
-    const applicationDeadline = useMemo(() => createFromISO(camperYear.applicationDeadline), [camperYear.applicationDeadline]);
-
+    const startDate = useMemo(() => createFromISO(camperYear?.startDate ?? ""), [camperYear?.startDate]);
+    const endDate = useMemo(() => createFromISO(camperYear?.endDate ?? ""), [camperYear?.endDate]);
+    const applicationDeadline = useMemo(() => createFromISO(camperYear?.applicationDeadline ?? ""), [camperYear?.applicationDeadline]);
+    
     let DeadlineStatus;
 
-    if (applicationDeadline.diffNow().toMillis() > 0) {
-        DeadlineStatus = (
-            <Alert variant="success">
-                <FontAwesomeIcon icon={faCircleInfo} /> RYLA is currently accepting applications for {startDate.year}!
-            </Alert>
-        )
+    if (applicationStatus === "accepting") {
+        DeadlineStatus = PreDeadline;
     }
     else {
-        DeadlineStatus = (
-            <Alert variant="warning">
-                <FontAwesomeIcon icon={faCircleInfo} /> The application deadline has passed for {startDate.year}.
-                You may no longer modify your profile or application materials.
-                If accepted by your rotary club, please proceed to the{' '}
-                <Link to="/camper/important-documents">Important Documents</Link> tab to complete the final steps for registration.
-            </Alert>
-        )
+        DeadlineStatus = PastDeadlineCamper;
     }
 
     return (
@@ -385,7 +371,8 @@ function CampInformation({ camperYear }: { camperYear: CampSchemaType | null }) 
             </ul>
 
 
-            {DeadlineStatus}
+            <DeadlineStatus/>
+            <CamperProfileView/>
         </div>
     )
 }

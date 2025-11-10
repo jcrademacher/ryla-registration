@@ -1,75 +1,71 @@
-import React, { useState, useContext } from 'react';
-import { Form, Button, Spinner } from 'react-bootstrap';
-import { useForm } from 'react-hook-form';
-import { updatePassword } from 'aws-amplify/auth';
+import React, { useContext } from 'react';
 import { emitToast, ToastType } from '../utils/notifications';
 import { ThinSpacer } from '../components/ThinSpacer';
 import { AuthContext } from '../App';
-
-type PasswordChangeForm = {
-    oldPassword: string;
-    newPassword: string;
-    confirmPassword: string;
-};
+import { AccountSettings } from '@aws-amplify/ui-react';
 
 export const ProfilePage: React.FC = () => {
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    // const [isSubmitting, setIsSubmitting] = useState(false);
     const authContext = useContext(AuthContext);
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-        watch,
-        reset
-    } = useForm<PasswordChangeForm>();
+    // const {
+    //     register,
+    //     handleSubmit,
+    //     formState: { errors },
+    //     watch,
+    //     reset
+    // } = useForm<PasswordChangeForm>();
 
-    const newPassword = watch('newPassword');
+    // const newPassword = watch('newPassword');
 
-    const onSubmit = async (data: PasswordChangeForm) => {
-        setIsSubmitting(true);
-        try {
-            await updatePassword({
-                oldPassword: data.oldPassword,
-                newPassword: data.newPassword
-            });
-            emitToast('Password updated successfully', ToastType.Success);
-            reset();
-        } catch (error: any) {
-            console.error('Error updating password:', error);
-            if (error.name === 'NotAuthorizedException') {
-                emitToast('Incorrect current password', ToastType.Error);
-            } else if (error.name === 'InvalidPasswordException') {
-                emitToast('New password does not meet requirements', ToastType.Error);
-            } else if (error.name === 'LimitExceededException') {
-                emitToast('Too many attempts. Please try again later', ToastType.Error);
-            } else {
-                emitToast('Failed to update password. Please try again.', ToastType.Error);
-            }
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    // const onSubmit = async (data: PasswordChangeForm) => {
+    //     setIsSubmitting(true);
+    //     try {
+    //         await updatePassword({
+    //             oldPassword: data.oldPassword,
+    //             newPassword: data.newPassword
+    //         });
+    //         emitToast('Password updated successfully', ToastType.Success);
+    //         reset();
+    //     } catch (error: any) {
+    //         console.error('Error updating password:', error);
+    //         if (error.name === 'NotAuthorizedException') {
+    //             emitToast('Incorrect current password', ToastType.Error);
+    //         } else if (error.name === 'InvalidPasswordException') {
+    //             emitToast('New password does not meet requirements', ToastType.Error);
+    //         } else if (error.name === 'LimitExceededException') {
+    //             emitToast('Too many attempts. Please try again later', ToastType.Error);
+    //         } else {
+    //             emitToast('Failed to update password. Please try again.', ToastType.Error);
+    //         }
+    //     } finally {
+    //         setIsSubmitting(false);
+    //     }
+    // };
 
     return (
-        <div className="container">
-            <div className="row justify-content-center">
-                <div className="col-md-8">
+        <div className="side-pad-20">
+            
                     <h4>User Profile</h4>
                     <ThinSpacer />
-
-
+                    
 
                     <div className="mb-3">
                         
                         <b>Email:</b> {authContext?.attributes?.email || 'Not available'}
 
                     </div>
-
+                    
                     <div className="mb-4">
                         <h5>Change Password</h5>
                         <ThinSpacer />
-                        <Form onSubmit={handleSubmit(onSubmit)}>
+                        <AccountSettings.ChangePassword 
+                            onSuccess={() => {
+                                emitToast('Password updated', ToastType.Success);
+                            }}
+                        />
+
+                        {/* <Form onSubmit={handleSubmit(onSubmit)}>
                             <Form.Group className="mb-3" controlId="oldPassword">
                                 <Form.Label>Current Password</Form.Label>
                                 <Form.Control
@@ -151,9 +147,7 @@ export const ProfilePage: React.FC = () => {
                                     )}
                                 </Button>
                             </div>
-                        </Form>
-                    </div>
-                </div>
+                        </Form> */}
             </div>
         </div>
     );

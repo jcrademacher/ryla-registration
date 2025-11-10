@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
     setUserAsCamper, 
     createCamperProfile, 
@@ -10,25 +10,32 @@ import {
 import { 
     uploadCamperApplication, 
     uploadCamperDocument,
-    CreateCamperDocumentSchemaType
+    CreateCamperDocumentSchemaType,
+    updateCamperDocumentStatus
 } from "../api/apiDocuments.ts";
-import { TransferProgressEvent } from "aws-amplify/storage";
+import { remove, TransferProgressEvent } from "aws-amplify/storage";
 import { createRotarianProfile, CreateRotarianProfileSchemaType, updateRotarianProfile, UpdateRotarianProfileSchemaType } from "../api/apiRotarianProfile.ts";
 import { AuthGroup } from "../../amplify/auth/utils.ts";
 import { setUserGroup, deleteUser, isUserCamper, isUserRotarian, getUserSubFromAttr } from "../api/auth.ts";
 import { deleteRotarianProfile } from "../api/apiRotarianProfile.ts";
-import { createRotarianReview, deleteRotarianReview } from "../api/apiRotarianReview.ts";
+import { createRotarianReview, deleteRotarianReview, getRotarianReview, RotarianReviewDecision, updateRotarianReview } from "../api/apiRotarianReview.ts";
+import { createRecommendation, updateRecommendation, UpdateRecommendationSchemaType, uploadRecommendationUnauthenticated } from "../api/apiRecommendations.ts";
+import { sendRecommendationLinkEmail } from "../api/apiEmail.ts";
 
 export function useUpdateProfileMutation() {
     return useMutation({
         mutationKey: ['updateProfile'],
         mutationFn: (data: UpdateCamperProfileSchemaType) => {
-            if (!data.userSub) {
-                throw new Error("User ID missing. Check auth flow.");
-            }
-            else {
-                return updateCamperProfile(data);
-            }
+            return updateCamperProfile(data);
+        }
+    });
+}
+
+export function useUpdateMultipleProfilesMutation() {
+    return useMutation({
+        mutationKey: ['updateMultipleProfiles'],
+        mutationFn: (data: UpdateCamperProfileSchemaType[]) => {
+            return Promise.all(data.map(item => updateCamperProfile(item)));
         }
     });
 }
@@ -166,15 +173,61 @@ export function useDeleteUserMutation() {
     });
 }
 
+export function useDecideCampersMutation() {
+    const queryClient = useQueryClient();
+    
+    return useMutation({
+        mutationKey: ['decideCampers'],
+        mutationFn: async ({ campers }: { campers: { camperSub: string | undefined, decision: RotarianReviewDecision | null }[] }) => {
+            let promises = [];
+
+            for(const camper of campers) {
+                const { camperSub, decision } = camper;
+
+                if(!camperSub) {
+                    throw new Error("Camper sub missing. Check auth flow.");
+                }
+
+                const review = await getRotarianReview(camperSub);
+
+                if(!review) {
+                    promises.push(createRotarianReview(camperSub, decision));
+                }
+                else {
+                    promises.push(updateRotarianReview(camperSub, decision));
+                }
+            }
+
+            return await Promise.all(promises);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['rotarianReview'] });
+        }
+    });
+}
+
 export function useCreateRotarianReviewMutation() {
     return useMutation({
         mutationKey: ['createRotarianReview'],
-        mutationFn: ({ camperSub, review }: { camperSub: string | undefined, review: "APPROVED" | "REJECTED" }) => {
+        mutationFn: ({ camperSub, review }: { camperSub: string | undefined, review: RotarianReviewDecision | null }) => {
             if(!camperSub) {
                 throw new Error("Camper sub missing. Check auth flow.");
             }
 
             return createRotarianReview(camperSub, review);
+        }
+    });
+}
+
+export function useUpdateRotarianReviewMutation() {
+    return useMutation({
+        mutationKey: ['updateRotarianReview'],
+        mutationFn: ({ camperSub, review }: { camperSub?: string | null, review: RotarianReviewDecision | null }) => {
+            if(!camperSub) {
+                throw new Error("Camper sub missing. Check auth flow.");
+            }
+
+            return updateRotarianReview(camperSub, review);
         }
     });
 }
@@ -198,5 +251,88 @@ export function useUploadCamperDocumentMutation() {
         }) => {
             return uploadCamperDocument(document, file, onProgress);
         }
+    });
+}
+
+export function useUpdateCamperDocumentStatusMutation() {
+    return useMutation({
+        mutationKey: ['updateCamperDocumentStatus'],
+        mutationFn: ({ 
+            camperUserSub, 
+            templateId, 
+            updates 
+        }: { 
+            camperUserSub: string, 
+            templateId: string, 
+            updates: { approved?: boolean; received?: boolean }
+        }) => {
+            return updateCamperDocumentStatus(camperUserSub, templateId, updates);
+        }
+    });
+}
+
+export function useCreateRecommendationMutation() {
+    return useMutation({
+        mutationKey: ['createRecommendation'],
+        mutationFn: async ({ camperUserSub, emailAddress, name }: { camperUserSub?: string | null, emailAddress: string, name: string }) => {
+            if(!camperUserSub) {
+                throw new Error("Camper sub missing. Check auth flow.");
+            }
+            
+            const rec = await createRecommendation({ camperUserSub, emailAddress, camperName: name });
+            if(rec) {
+                await sendRecommendationLinkEmail(rec.id, emailAddress, name);
+            }
+
+            return rec;
+        }
+    });
+}
+
+export function useUpdateRecommendationMutation() {
+    return useMutation({
+        mutationKey: ['updateRecommendation'],
+        mutationFn: async ({ rec, name, oldPath }: { rec: UpdateRecommendationSchemaType, name: string, oldPath?: string | null }) => {
+            if(rec.emailAddress) {
+                if(oldPath) {
+                    rec.filepath = null;
+                    await remove({
+                        path: oldPath
+                    });
+                }
+                await sendRecommendationLinkEmail(rec.id, rec.emailAddress, name);
+            }
+            return updateRecommendation({
+                ...rec,
+                camperName: name
+            });
+        }
+    });
+}
+
+export function useResendRecommendationLinkMutation() {
+    return useMutation({
+        mutationKey: ['resendRecommendationLink'],
+        mutationFn: ({ recId, emailAddress, name }: { recId: string, emailAddress: string, name: string }) => {
+
+            return sendRecommendationLinkEmail(recId, emailAddress, name);
+        }
+    });
+}
+
+export function useSubmitRecommendationUnauthenticatedMutation(recId?: string | null, camperUserSub?: string | null) {
+    return useMutation({
+        mutationKey: ['submitRecommendationUnauthenticated'],
+        mutationFn: ({ file, onProgress }: { file: File, onProgress?: (event: TransferProgressEvent) => void }) => {
+            if(!camperUserSub) {
+                throw new Error("Camper sub missing. Check auth flow.");
+            }
+
+            if(!recId) {
+                throw new Error("Recommendation id missing. Check auth flow.");
+            }
+
+            return uploadRecommendationUnauthenticated(recId, camperUserSub, file, onProgress);
+        },
     });
 }

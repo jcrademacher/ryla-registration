@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useContext, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useContext, useCallback } from "react";
 import { AuthContext } from "../../App";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
@@ -16,7 +16,7 @@ import {
 import { useForm } from "react-hook-form";
 import { ThinSpacer } from "../../components/ThinSpacer";
 import { SpinnerButton } from "../../utils/button";
-import { createEDT, createFromISO } from "../../utils/datetime";
+import { createEDT } from "../../utils/datetime";
 import { DateTime } from "luxon";
 import { useListRotaryClubsQuery } from "../../queries/queries";
 
@@ -89,7 +89,7 @@ const mapFormToSchema1 = (form: CamperUserProfileForm1Type, userSub?: string): U
     }
 }
 
-function CamperProfileForm1({ camperProfile, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) {
+export function CamperProfileForm1({ camperProfile, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) {
 
     const authContext = useContext(AuthContext);
 
@@ -116,11 +116,13 @@ function CamperProfileForm1({ camperProfile, onNext }: { camperProfile: CamperPr
         const dataToUpdate = mapFormToSchema1(data, authContext.attributes.sub);
 
         updateProfileMutation.mutate(dataToUpdate, {
-            onSuccess: (data) => {
-                queryClient.setQueryData(['camperProfile', authContext.attributes.sub], data);
+            onSuccess: () => {
                 onNext();
             },
-            onSettled: () => setSaving(false),
+            onSettled: () => {
+                setSaving(false);
+                queryClient.invalidateQueries({ queryKey: ['camperProfile', authContext.attributes.sub] });
+            },
         });
     }
 
@@ -378,7 +380,7 @@ const mapFormToSchema2 = (form: CamperUserProfileForm2Type, userSub?: string): U
     }
 }
 
-function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) {
+export function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) {
     const {
         register,
         handleSubmit,
@@ -401,10 +403,12 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
         const dataToUpdate = mapFormToSchema2(nullifyEmptyStrings(data), authContext.attributes.sub);
 
         updateProfileMutation.mutate(dataToUpdate, {
-            onSuccess: (data) => {
-                setSaving(false);
-                queryClient.setQueryData(['camperProfile', authContext.attributes.sub], data);
+            onSuccess: () => {
                 onNext();
+            },
+            onSettled: () => {
+                setSaving(false);
+                queryClient.invalidateQueries({ queryKey: ['camperProfile', authContext.attributes.sub] });
             },
             onError: () => setSaving(false),
         });
@@ -415,7 +419,7 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
             <Row>
                 <Col xs={3}>
                     <Form.Group>
-                        <Form.Label>Parent 1 First Name <Req /></Form.Label>
+                        <Form.Label>Parent/Guardian 1 First Name <Req /></Form.Label>
                         <Form.Control
                             type="text"
                             {...register("parent1FirstName", { required: true })}
@@ -428,7 +432,7 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
                 </Col>
                 <Col xs={3}>
                     <Form.Group>
-                        <Form.Label>Parent 1 Last Name <Req /></Form.Label>
+                        <Form.Label>Parent/Guardian 1 Last Name <Req /></Form.Label>
                         <Form.Control
                             type="text"
                             {...register("parent1LastName", { required: true })}
@@ -441,7 +445,7 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
                 </Col>
                 <Col xs={3}>
                     <Form.Group>
-                        <Form.Label>Parent 1 Phone <Req /></Form.Label>
+                        <Form.Label>Parent/Guardian 1 Phone <Req /></Form.Label>
                         <Form.Control
                             type="tel"
                             {...register("parent1Phone", {
@@ -457,7 +461,7 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
                 </Col>
                 <Col xs={3}>
                     <Form.Group>
-                        <Form.Label>Parent 1 Email <Req /></Form.Label>
+                        <Form.Label>Parent/Guardian 1 Email <Req /></Form.Label>
                         <Form.Control
                             type="text"
                             {...register("parent1Email", {
@@ -475,7 +479,7 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
             <Row>
                 <Col xs={3}>
                     <Form.Group>
-                        <Form.Label>Parent 2 First Name</Form.Label>
+                        <Form.Label>Parent/Guardian 2 First Name</Form.Label>
                         <Form.Control
                             type="text"
                             {...register("parent2FirstName")}
@@ -485,7 +489,7 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
                 </Col>
                 <Col xs={3}>
                     <Form.Group>
-                        <Form.Label>Parent 2 Last Name</Form.Label>
+                        <Form.Label>Parent/Guardian 2 Last Name</Form.Label>
                         <Form.Control
                             type="text"
                             {...register("parent2LastName")}
@@ -495,7 +499,7 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
                 </Col>
                 <Col xs={3}>
                     <Form.Group>
-                        <Form.Label>Parent 2 Phone</Form.Label>
+                        <Form.Label>Parent/Guardian 2 Phone</Form.Label>
                         <Form.Control
                             type="tel"
                             {...register("parent2Phone", {
@@ -507,7 +511,7 @@ function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperProfile: 
                 </Col>
                 <Col xs={3}>
                     <Form.Group>
-                        <Form.Label>Parent 2 Email</Form.Label>
+                        <Form.Label>Parent/Guardian 2 Email</Form.Label>
                         <Form.Control
                             type="text"
                             {...register("parent2Email", {
@@ -595,10 +599,11 @@ type CamperUserProfileForm3Type = {
     guidanceCounselorPhone: string | null;
 }
 
-const mapSchemaToForm3 = (schema: CamperProfileSchemaType): CamperUserProfileForm3Type => {
+const mapSchemaToForm3 = (schema: CamperProfileSchemaType, rotaryClubs?: RotaryClubSchemaType[] | null): CamperUserProfileForm3Type => {
 
+    console.log(schema);
     return {
-        sponsoringRotaryClub: schema.rotaryClubId ?? null,
+        sponsoringRotaryClub: rotaryClubs?.find(club => club.id === schema.rotaryClubId)?.id ?? null,
         highSchool: schema.highSchool ?? null,
         guidanceCounselorName: schema.guidanceCounselorName ?? null,
         guidanceCounselorEmailAddress: schema.guidanceCounselorEmail ?? null,
@@ -620,7 +625,7 @@ const mapFormToSchema3 = (form: CamperUserProfileForm3Type, userSub?: string): U
 
 // import { ROTARY_CLUBS } from '../constants';
 
-const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) => {
+export const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) => {
     const { data: rotaryClubs, isPending: isRotaryClubsPending } = useListRotaryClubsQuery();
 
     const {
@@ -628,7 +633,7 @@ const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperProfile: 
         handleSubmit,
         formState: { errors }
     } = useForm<CamperUserProfileForm3Type>({
-        values: mapSchemaToForm3(camperProfile)
+        values: mapSchemaToForm3(camperProfile, rotaryClubs)
     });
 
 
@@ -645,10 +650,12 @@ const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperProfile: 
         const dataToUpdate = mapFormToSchema3(nullifyEmptyStrings(data), authContext.attributes.sub);
 
         updateProfileMutation.mutate(dataToUpdate, {
-            onSuccess: (data) => {
-                setSaving(false);
-                queryClient.setQueryData(['camperProfile', authContext.attributes.sub], data);
+            onSuccess: () => {
                 onNext();
+            },
+            onSettled: () => {
+                setSaving(false);
+                queryClient.invalidateQueries({ queryKey: ['camperProfile', authContext.attributes.sub] });
             },
             onError: () => setSaving(false),
         });
@@ -789,6 +796,7 @@ const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperProfile: 
 
 import { DIETARY_RESTRICTIONS } from '../constants';
 import { useCamperProfileQuery, useCamperYearQuery } from '../../queries/queries';
+import { RotaryClubSchemaType } from "../../api/apiRotaryClub";
 
 type CamperUserProfileForm4Type = {
     dietaryRestrictions: string | null;
@@ -813,7 +821,7 @@ const mapFormToSchema4 = (form: CamperUserProfileForm4Type, userSub?: string): U
     }
 }
 
-function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) {
+export function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperProfile: CamperProfileSchemaType, onBack: () => void, onNext: () => void }) {
     const {
         register,
         handleSubmit,
@@ -841,21 +849,23 @@ function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperProfile: 
 
         const dataToUpdate = mapFormToSchema4(nullifyEmptyStrings(data), authContext.attributes.sub);
 
-        await updateProfileMutation.mutateAsync({
+        updateProfileMutation.mutate({
             ...dataToUpdate,
             profileComplete: true,
         }, {
-            onSuccess: (data) => {
-                setSaving(false);
-                queryClient.setQueryData(['camperProfile', authContext.attributes.sub], data);
+            onSuccess: () => {
                 emitToast(`Camper profile completed.`, ToastType.Success);
+
+            },
+            onSettled: () => {
+                setSaving(false);
+                queryClient.invalidateQueries({ queryKey: ['camperProfile', authContext.attributes.sub] });
 
                 // wait slightly for re-render and protected route to unlock
                 setTimeout(() => {
                     onNext();
-                }, 10);
+                }, 100);
             },
-            onError: () => setSaving(false),
         });
 
 
@@ -935,6 +945,8 @@ function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperProfile: 
     )
 }
 
+
+
 export function CamperProfile() {
     const [creatingProfile, setCreatingProfile] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
@@ -946,13 +958,13 @@ export function CamperProfile() {
     const navigate = useNavigate();
 
     const { data: camperProfile, isSuccess } = useCamperProfileQuery(authContext.attributes.sub);
-    const { data: camperYear } = useCamperYearQuery(camperProfile ?? null);
+    const { data: camperYear } = useCamperYearQuery();
 
-    const appDeadlinePassed = useMemo(() => {
-        if (!camperYear) return true;
-        const appDeadline = createFromISO(camperYear.applicationDeadline);
-        return appDeadline.diffNow().toMillis() < 0;
-    }, [camperYear]);
+    // const appDeadlinePassed = useMemo(() => {
+    //     if (!camperYear) return true;
+    //     const appDeadline = createFromISO(camperYear.applicationDeadline);
+    //     return appDeadline.diffNow().toMillis() < 0;
+    // }, [camperYear]);
 
     // Scroll to top when currentStep changes to show a form (steps 1-4)
     useEffect(() => {
@@ -977,8 +989,8 @@ export function CamperProfile() {
             email: authContext.attributes.email ?? "",
             campId: camperYear?.id ?? "",
         }, {
-            onSuccess: (data) => {
-                queryClient.setQueryData(['camperProfile', authContext.attributes.sub], data);
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ['camperProfile', authContext.attributes.sub] });
             },
             onSettled: () => {
                 setCreatingProfile(false);
@@ -998,7 +1010,6 @@ export function CamperProfile() {
                     icon={faChevronRight}
                     onClick={() => setCurrentStep((x) => x + 1)}
                     position="right"
-                    disabled={appDeadlinePassed}
                 >
                     Continue Profile
                 </IconButton>
@@ -1013,7 +1024,6 @@ export function CamperProfile() {
                     icon={faChevronRight}
                     onClick={() => setCurrentStep((x) => x + 1)}
                     position="right"
-                    disabled={appDeadlinePassed}
                 >
                     Edit Profile
                 </IconButton>
@@ -1029,7 +1039,6 @@ export function CamperProfile() {
                     onClick={handleCreateProfile}
                     position="right"
                     loading={creatingProfile}
-                    disabled={appDeadlinePassed}
                 >
                     Begin Profile
                 </SpinnerButton>

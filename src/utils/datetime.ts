@@ -1,20 +1,31 @@
 import { DateTime } from "luxon";
+import { CampSchemaType } from "../api/apiCamp";
 
 // Helper function to format camp dates
-export const formatCampDates = (start: DateTime, end: DateTime): string => {
+export const formatCampDates = (camp?: CampSchemaType | null): string => {
+    if (!camp) {
+        return "";
+    }
 
-    const startString = formatDateNoYearWithTime(start);
-    const endString = formatDateNoYearWithTime(end);
+    const startDate = createEDT(camp.startDate);
+    const endDate = createEDT(camp.endDate);
+
+    const startString = formatDateFullWithTime(startDate);
+    const endString = formatDateFullWithTime(endDate);
 
     return `${startString} - ${endString}`;
 };  
 
-export function formatDateFull(datetime: DateTime) {
-    return datetime.toLocaleString(DateTime.DATE_FULL);
+export const getCampYear = (camp?: CampSchemaType | null): string => {
+    if (!camp) {
+        return "";
+    }
+
+    return createEDT(camp.startDate).year.toString();
 }
 
-export function formatDateNoYearWithTime(datetime: DateTime) {
-    return datetime.toFormat("MMMM d 'at' h:mm a");
+export function formatDateFull(datetime: DateTime) {
+    return datetime.toLocaleString(DateTime.DATE_FULL);
 }
 
 export function formatDateFullWithTime(datetime: DateTime) {

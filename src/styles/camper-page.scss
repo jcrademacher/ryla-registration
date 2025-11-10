@@ -7,4 +7,7 @@
 
 .camper-information-table {
     width: 50%;
+    td:first-child {
+        width: 300px;
+    }
 }

@@ -3,13 +3,13 @@ import { UseAuthenticator } from '@aws-amplify/ui-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Dropdown } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
-import { faUser } from '@fortawesome/free-solid-svg-icons';
+import { faQuestion, faUser } from '@fortawesome/free-solid-svg-icons';
 
 interface NavBarProps {
-    signOut: UseAuthenticator["signOut"] | undefined;
+    signOut?: UseAuthenticator["signOut"] | undefined;
     children?: React.ReactNode;
     title?: string;
-}   
+}
 
 type DropdownOptions = {
     name?: string,
@@ -30,9 +30,9 @@ export function NavDropdown({ title, items }: DropdownProps) {
             </Dropdown.Toggle>
 
             <Dropdown.Menu>
-                {items.map(({ name, disabled, action },i) => {
+                {items.map(({ name, disabled, action }, i) => {
                     if (!name && !action && !disabled) {
-                        return <Dropdown.Divider key={i}/>
+                        return <Dropdown.Divider key={i} />
                     }
                     else {
                         return <Dropdown.Item disabled={disabled} onClick={action} key={name}>{name}</Dropdown.Item>
@@ -63,14 +63,23 @@ export function NavBar({ signOut, title, children }: NavBarProps) {
             </span>
             {children}
             <NavRight>
-                <Button 
-                    id="profile-button" 
-                    onClick={() => { navigate('/profile') }}
-
-                >
-                    <FontAwesomeIcon icon={faUser} />
-                </Button>
-                <button id="signout-button" onClick={() => { if (signOut) signOut() }}>Sign Out</button>
+                {signOut && (
+                    <>
+                        <Button
+                            id="help-button"
+                            onClick={() => { navigate('/help') }}
+                        >
+                            <FontAwesomeIcon icon={faQuestion} />
+                        </Button>
+                        <Button
+                            id="profile-button"
+                            onClick={() => { navigate('/profile') }}
+                        >
+                            <FontAwesomeIcon icon={faUser} />
+                        </Button>
+                        <button id="signout-button" onClick={() => { signOut() }}>Sign Out</button>
+                    </>
+                )}
             </NavRight>
         </div>
     )

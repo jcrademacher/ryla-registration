@@ -1,26 +1,18 @@
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Alert } from "react-bootstrap";
+
+import { ThinSpacer } from "../components/ThinSpacer";
 
 export const HelpPage = () => {
+    const directorEmail = import.meta.env.VITE_APP_DIRECTOR_EMAIL;
+    const itSupportEmail = import.meta.env.VITE_APP_IT_SUPPORT_EMAIL;
+
     return (
-        <div>
-            <Alert variant="info">
-                <FontAwesomeIcon icon={faCircleInfo} className="me-2" />
-                After campers have been accepted, documents that are added here will be available for campers to view.
-                <ul>
-                    <li><strong>View-Only</strong> sets the document to be simply displayed to the camper (i.e., a welcome packet).</li>
-                    <li><strong>Complete & Upload</strong> sets the document to be filled out by the camper and uploaded (i.e., a photo release).</li>
-                    <li><strong>Complete & Mail</strong> sets the document to be filled out by the camper and mailed to the RYLA address (i.e., a medical form).</li>
-                </ul>
+        <div className="side-pad-20">
+            <h4>Help</h4>
+            <ThinSpacer />
+            <h5>For questions about RYLA, Rotary, camp, documents, or the registration process, please contact <a href={`mailto:${directorEmail}`}>{directorEmail}</a></h5>
+            <br/>
 
-            </Alert>
-
-            <Alert variant="info">
-                <FontAwesomeIcon icon={faCircleInfo} className="me-2" />
-                The time zone for camp dates is Eastern Daylight Time (EDT).
-                These dates will be displayed to campers and rotarians as the start (dropoff time) and end (pickup time) dates of camp.
-            </Alert>
+            <h5>For technical issues with this portal, please contact <a href={`mailto:${itSupportEmail}`}>{itSupportEmail}</a></h5>
 
         </div>
     )

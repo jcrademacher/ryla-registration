@@ -4,10 +4,11 @@ import { createFromISO, formatDateFull } from "./datetime";
 export function getCamperName(camperProfile?: CamperProfileSchemaType | null) {
 
     if (!camperProfile) {
-        return "";
+        return "No Name";
     }
 
     const { firstName, nickname, lastName, middleInitial } = camperProfile;
+
     return `${firstName} ${nickname ? `(${nickname})` : ''} ${middleInitial ? `${middleInitial}.` : ''} ${lastName}`;
 }
 
@@ -33,4 +34,12 @@ export function formatPhoneNumber(phoneNumber?: string | null) {
     }
 
     return phoneNumber.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3");
+}
+
+export function getFilepathFilename(filepath?: string | null) {
+    if (!filepath) {
+        return "";
+    }
+
+    return filepath.split("/").pop();
 }

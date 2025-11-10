@@ -21,14 +21,31 @@ import { CampManagementPage } from "./pages/camp/CampManagementPage";
 import { ViewCamperPage } from "./pages/ViewCamperPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RotaryClubManagementPage } from "./pages/RotaryClubManagementPage";
+import { SubmitRecommendationPage } from "./pages/SubmitRecommendationPage";
+import { HelpPage } from "./pages/HelpPage";
 
 function App() {
     return (
-        <Authenticator>
-            {({ signOut, user }) => {
-                return <AuthView signOut={signOut} user={user} />
-            }}
-        </Authenticator>
+        <>
+            <Routes>
+                <Route path="/submit-recommendation" element={
+                    <div id="main">
+                        <NavBar title="RYLA 7780 Registration" />
+                        <div id="content">
+                            <SubmitRecommendationPage />
+                        </div>
+                    </div>
+                } />
+                <Route path="*" element={
+                    <Authenticator>
+                        {({ signOut, user }) => {
+                            return <AuthView signOut={signOut} user={user} />
+                        }}
+                    </Authenticator>
+                } />
+            </Routes>
+            <ToastContainer />
+        </>
     );
 }
 
@@ -77,39 +94,39 @@ function AuthView({ signOut, user }: AuthViewProps) {
                         <Routes>
                             {/* Home route - accessible to all authenticated users */}
                             <Route path="/" element={<HomePage />} />
-                            
+
                             {/* Profile route - accessible to all authenticated users */}
                             <Route path="/profile" element={<ProfilePage />} />
 
                             {/* Admin routes - only accessible to admin users */}
                             <Route
                                 path="/admin"
-                            >   
-                                    <Route index element={ 
-                                        <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
-                                            <AdminPage />
-                                        </ProtectedRoute>
-                                    } />
-                                    <Route path="user-management" element={
-                                        <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
-                                            <UserManagement />
-                                        </ProtectedRoute>
-                                    } />
-                                    <Route path="camps" element={
-                                        <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
-                                            <CampDashboard />
-                                        </ProtectedRoute>
-                                    } />
-                                    <Route path="camps/:campId/*" element={
-                                        <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
-                                            <CampManagementPage />
-                                        </ProtectedRoute>
-                                    } />
-                                    <Route path="rotary-clubs" element={
-                                        <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
-                                            <RotaryClubManagementPage />
-                                        </ProtectedRoute>
-                                    } />
+                            >
+                                <Route index element={
+                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                        <AdminPage />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="user-management" element={
+                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                        <UserManagement />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="camps" element={
+                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                        <CampDashboard />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="camps/:campId/*" element={
+                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                        <CampManagementPage />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="rotary-clubs" element={
+                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                        <RotaryClubManagementPage />
+                                    </ProtectedRoute>
+                                } />
                             </Route>
 
                             {/* Rotarian routes - only accessible to rotarian users */}
@@ -142,12 +159,12 @@ function AuthView({ signOut, user }: AuthViewProps) {
                                 } />
 
                             {/* Catch-all route - redirect to home */}
+                            <Route path="/help" element={<HelpPage />} />
                             <Route path="*" element={<NotFoundPage />} />
                         </Routes>
                     </div>
 
                 </div>
-                <ToastContainer />
             </AuthContext.Provider>
         )
     }

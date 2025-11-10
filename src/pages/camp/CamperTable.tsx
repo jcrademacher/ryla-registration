@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { flexRender } from "@tanstack/react-table";
 import { CamperProfileRowData } from "./CampManagementPage";
+import { useNavigate } from "react-router";
 
 
 interface CamperTableProps {
@@ -13,6 +14,8 @@ interface CamperTableProps {
 }
 
 export function CamperTable({ table, isPending }: CamperTableProps) {
+
+    const navigate = useNavigate();
 
     const TableBody = () => {
         return (
@@ -28,16 +31,21 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
                         onMouseDown={(e) => {
                             // e.preventDefault();
                             // e.stopPropagation();
-                            if (e.shiftKey) {
-                                // Shift+click: add to selection (toggle this row)
-                                row.getToggleSelectedHandler()(e);
-                            } else {
-                                // Regular click: deselect all others and select only this row
-                                const isCurrentlySelected = row.getIsSelected();
-                                table.resetRowSelection();
-                                if (!isCurrentlySelected) {
-                                    row.toggleSelected(true);
+                            if(e.detail === 1) {
+                                if (e.shiftKey) {
+                                    // Shift+click: add to selection (toggle this row)
+                                    row.getToggleSelectedHandler()(e);
+                                } else {
+                                    // Regular click: deselect all others and select only this row
+                                    const isCurrentlySelected = row.getIsSelected();
+                                    table.resetRowSelection();
+                                    if (!isCurrentlySelected) {
+                                        row.toggleSelected(true);
+                                    }
                                 }
+                            }
+                            else if(e.detail === 2) {
+                                navigate(`/camper-view/${row.original.userSub}`);
                             }
                         }}
                         className={row.getIsSelected() ? 'selected' : ''}

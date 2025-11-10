@@ -11,7 +11,7 @@ import { SpinnerButton, IconButton } from '../utils/button';
 import { useCreateCampMutation } from '../queries/adminMutations';
 import { useListCampsQuery } from '../queries/adminQueries';
 import { useQueryClient } from '@tanstack/react-query';
-import { createFromISO, createEDT, formatCampDates } from '../utils/datetime';
+import { createEDT, formatCampDates } from '../utils/datetime';
 import { DateTime } from 'luxon';
 
 
@@ -76,12 +76,8 @@ export const CampYearCardPlaceholder: React.FC<CampYearCardPlaceholderProps> = (
 
 const CampYearCard: React.FC<CampYearCardProps> = ({ camp, onClick }) => {
 
-    const startDate = createFromISO(camp.startDate);
-    const endDate = createFromISO(camp.endDate);
 
-    const campDates = formatCampDates(startDate, endDate);
-    const campYear = startDate.year;
-    const campName = `RYLA ${campYear}`;
+    const campDates = formatCampDates(camp);
 
     return (
         <Col md={4} lg={3}>
@@ -91,7 +87,7 @@ const CampYearCard: React.FC<CampYearCardProps> = ({ camp, onClick }) => {
                 style={{ cursor: 'pointer' }}
             >
                 <Card.Header className="d-flex justify-content-between align-items-center">
-                    <h5 className="mb-0">{campName}</h5>
+                    <h5 className="mb-0">{camp.name}</h5>
                 </Card.Header>
                 <Card.Body>
                     <div className="mb-3">
@@ -141,9 +137,11 @@ const CampYearCard: React.FC<CampYearCardProps> = ({ camp, onClick }) => {
 };
 
 type CreateCampForm = {
+    name: string;
     startDate: string;
     endDate: string;
     applicationDeadline: string;
+    applicationOpenDate: string;
 }
 
 export const CampDashboard: React.FC = () => {
@@ -163,11 +161,14 @@ export const CampDashboard: React.FC = () => {
         const startDate = startDateObj.toISO();
         const endDate = endDateObj.toISO();
         const applicationDeadline = createEDT(data.applicationDeadline).toISO();
+        const applicationOpenDate = createEDT(data.applicationOpenDate).toISO();
 
         const newCamp: CreateCampSchemaType = {
+            name: data.name,
             startDate: startDate ?? "",
             endDate: endDate ?? "",
-            applicationDeadline: applicationDeadline ?? ""
+            applicationDeadline: applicationDeadline ?? "",
+            applicationOpenDate: applicationOpenDate ?? ""
         }
 
         console.log('newCamp', newCamp);
@@ -219,6 +220,22 @@ export const CampDashboard: React.FC = () => {
             >
                 <Form onSubmit={handleSubmit(onCampCreate)}>
                     <Modal.Body>
+                        <Row>
+                            <Col xs={12}>
+                                <Form.Group>
+                                    <Form.Label>Name</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        {...register('name', { required: true })}
+                                        isInvalid={!!errors.name}
+                                        placeholder="e.g. RYLA 2026"
+                                    />
+                                    <Form.Control.Feedback type="invalid">
+                                        {errors.name?.message || 'Camp name is required'}
+                                    </Form.Control.Feedback>
+                                </Form.Group>
+                            </Col>
+                        </Row>
                         <Row>
                             <Col xs={6}>
                                 <Form.Group>
@@ -280,7 +297,31 @@ export const CampDashboard: React.FC = () => {
                             </Col>
                         </Row>
                         <Row>
-                            <Col xs={12}>
+                            <Col xs={6}>
+                                <Form.Group>
+                                    <Form.Label>Application Open Date</Form.Label>
+                                    <Form.Control 
+                                        type="datetime-local" 
+                                        {...register('applicationOpenDate', {
+                                            required: true,
+                                            validate: (applicationOpenDate, { applicationDeadline }) => {
+                                                const applicationDeadlineObj = createEDT(applicationDeadline);
+                                                const applicationOpenDateObj = createEDT(applicationOpenDate);
+
+                                                if(applicationOpenDateObj > applicationDeadlineObj) {
+                                                    return 'Application open date must be before application deadline';
+                                                }
+                                                return true;
+                                            }
+                                        })} 
+                                        isInvalid={!!errors.applicationOpenDate}
+                                    />
+                                    <Form.Control.Feedback type="invalid">
+                                        {errors.applicationOpenDate?.message || 'Application open date is required'}
+                                    </Form.Control.Feedback>
+                                </Form.Group>
+                            </Col>
+                            <Col xs={6}>
                                 <Form.Group>
                                     <Form.Label>Application Deadline</Form.Label>
                                     <Form.Control 
@@ -309,7 +350,7 @@ export const CampDashboard: React.FC = () => {
                         <Row>
                             <Col xs={12}>
                                 <Alert variant="info">
-                                    <FontAwesomeIcon icon={faCircleInfo} /> The time zone for camp dates is Eastern Daylight Time (EDT). 
+                                    <FontAwesomeIcon icon={faCircleInfo} /> The time zone for camp dates is Eastern Time (EDT/EST). 
                                     These dates will be displayed to campers and rotarians as the start (dropoff time) and end (pickup time) dates of camp.
                                 </Alert>
                             </Col>
