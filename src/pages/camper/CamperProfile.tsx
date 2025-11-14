@@ -801,7 +801,7 @@ import { RotaryClubSchemaType } from "../../api/apiRotaryClub";
 type CamperUserProfileForm4Type = {
     dietaryRestrictions: string | null;
     dietaryRestrictionsNotes?: string | null;
-
+    tshirtSize: string | null;
 }
 
 const mapSchemaToForm4 = (schema: CamperProfileSchemaType): CamperUserProfileForm4Type => {
@@ -809,6 +809,7 @@ const mapSchemaToForm4 = (schema: CamperProfileSchemaType): CamperUserProfileFor
     return {
         dietaryRestrictions: schema.dietaryRestrictions ?? null,
         dietaryRestrictionsNotes: schema.dietaryRestrictionsNotes ?? null,
+        tshirtSize: schema.tshirtSize ?? null,
     }
 }
 
@@ -818,6 +819,7 @@ const mapFormToSchema4 = (form: CamperUserProfileForm4Type, userSub?: string): U
         userSub: userSub ?? "",
         dietaryRestrictions: form.dietaryRestrictions,
         dietaryRestrictionsNotes: form.dietaryRestrictionsNotes,
+        tshirtSize: form.tshirtSize,
     }
 }
 
@@ -829,9 +831,6 @@ export function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperPr
     } = useForm<CamperUserProfileForm4Type>({
         values: mapSchemaToForm4(camperProfile)
     });
-
-
-
 
     const [saving, setSaving] = useState(false);
 
@@ -868,9 +867,7 @@ export function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperPr
             },
         });
 
-
     }
-
 
     useEffect(() => {
         // Scroll to the top of the form when the component loads
@@ -920,6 +917,28 @@ export function CamperProfileForm4({ camperProfile, onBack, onNext }: { camperPr
                         <Form.Text>
                             If you selected "Other" or have additional information about your dietary needs, please describe here.
                         </Form.Text>
+                    </Form.Group>
+                </Col>
+            </Row>
+            <Row>
+                <Col xs={4}>
+                    <Form.Group>
+                        <Form.Label>T-Shirt Size <Req /></Form.Label>
+                        <Form.Select
+                            {...register("tshirtSize", { required: true })}
+                            isInvalid={!!errors?.tshirtSize}
+                        >
+                            <option disabled value="">Select...</option>
+                            <option value="XS">XS</option>
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">XXL</option>
+                        </Form.Select>
+                        <Form.Control.Feedback type="invalid">
+                            Please select a t-shirt size.
+                        </Form.Control.Feedback>
                     </Form.Group>
                 </Col>
             </Row>

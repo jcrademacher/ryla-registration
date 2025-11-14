@@ -2,6 +2,8 @@ import { Alert } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router";
+import { DateTime } from "luxon";
+import { formatDateFullWithTime } from "../utils/datetime";
 
 export const NotAcceptingApplications = () => {
     return (
@@ -14,10 +16,11 @@ export const NotAcceptingApplications = () => {
     );
 };
 
-export const PreDeadline = () => {
+export const PreDeadline = ({ deadline }: { deadline: DateTime }) => {
     return (
         <Alert variant="success">
-            <FontAwesomeIcon icon={faCircleInfo} /> RYLA is currently accepting applications!
+            <FontAwesomeIcon icon={faCircleInfo} className="me-2" /> 
+            RYLA is currently accepting applications! Applications are due by {formatDateFullWithTime(deadline)}.
         </Alert>
     )
 }

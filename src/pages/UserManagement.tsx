@@ -14,6 +14,8 @@ import { AUTH_GROUPS, AuthGroup } from '../../amplify/auth/utils';
 import { getUserEmailFromAttr, getUserSubFromAttr } from '../api/auth';
 import { formatDateFull } from '../utils/datetime';
 import { PlaceholderElement } from '../components/PlaceholderElement';
+import { Hub } from 'aws-amplify/utils';
+import { useEffect } from 'react';
 
 type ChangeGroupFormType = {
     group: AuthGroup | "CAMPERS";
@@ -241,6 +243,12 @@ function UserRow({ user }: { user: any }) {
 
 export function UserManagement() {
     const { data: usersData, isLoading, error, isSuccess } = useListUsersQuery();
+
+    useEffect(() => {
+        Hub.listen('auth', (data) => {
+            console.log('data', data);
+        });
+    }, []);
 
     if (isLoading) {
         return (

@@ -2,10 +2,11 @@
 import { CampManagementHeader } from './CampManagementHeader';
 import { CamperTable } from './CamperTable';
 import { useState } from 'react';
-import { useCamperProfilesByCampQuery, useCampQuery, useObserveCamperProfilesByCampQuery } from '../../queries/adminQueries';
+import { useCamperProfilesQuery, useCampQuery } from '../../queries/adminQueries';
+import { useObserveCamperProfiles } from '../../queries/subscriptions';
 import { createFromISO } from '../../utils/datetime';
 import { DateTime } from 'luxon';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Routes, Route, useNavigate } from 'react-router';
 import { 
     ColumnFiltersState, 
@@ -275,13 +276,17 @@ export const CampManagementPage = () => {
     const { campId } = useParams();
     const { data: camp } = useCampQuery();
 
-    const { data: campers, isPending } = useCamperProfilesByCampQuery();
-    useObserveCamperProfilesByCampQuery(campId);
+    const { data: campers, isPending } = useCamperProfilesQuery();
+    // useObserveCamperProfilesByCampQuery(campId);
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        const sub = useObserveCamperProfiles(queryClient, campId);
+        return () => sub.unsubscribe();
+    }, [queryClient, campId]);
 
     const mutateViewState = useUpdateCamperProfileViewStateMutation();
     const mutateFilterState = useUpdateCamperProfileFilterStateMutation();
-
-    const queryClient = useQueryClient();
 
     const handleColumnVisibilityChange: OnChangeFn<VisibilityState> = (updaterOrValue) => {
         let newVisibility;

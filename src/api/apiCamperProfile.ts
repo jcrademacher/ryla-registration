@@ -36,6 +36,27 @@ export function observeCamperProfilesByCamp(campId: string, updateFn: (data: Cam
     });
 }
 
+export function onCamperProfileUpdate(updateFn: (data: CamperProfileSchemaType) => void, campId?: string | null, rotaryClubId?: string | null) {
+    return client.models.CamperProfile.onUpdate({
+        filter: {
+            campId: {
+                eq: campId ?? undefined
+            },
+            rotaryClubId: {
+                eq: rotaryClubId ?? undefined
+            }
+        }
+    }).subscribe({
+        next: (data) => {
+            updateFn(data);
+        },
+        error: (error) => {
+            throw error;
+        },
+    });
+}
+
+
 // https://www.alexdebrie.com/posts/dynamodb-filter-expressions/
 // https://github.com/aws-amplify/amplify-js/issues/2901
 

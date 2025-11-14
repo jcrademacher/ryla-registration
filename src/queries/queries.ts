@@ -110,7 +110,8 @@ export function useUrlToCamperApplicationQuery(identityId?: string, enabled: boo
 export function useListUsersQuery() {
     return useQuery({
         queryKey: ["users"],
-        queryFn: listAllUsers
+        queryFn: listAllUsers,
+        refetchInterval: 10 * 1000
     });
 }
 

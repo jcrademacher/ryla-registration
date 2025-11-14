@@ -11,20 +11,19 @@ export function useListCampsQuery() {
     });
 }
 
-export function useCamperProfilesByCampQuery(campIdArg?: string | null, rotaryClubId?: string | null) {
+export function useCamperProfilesQuery(campIdArg?: string | null, rotaryClubId?: string | null) {
     let { campId } = useParams();
 
     campId = campIdArg ?? campId;
 
     return useQuery({
-        queryKey: ['camperProfilesByCamp', campId, rotaryClubId],
+        queryKey: ['camperProfiles', { campId, rotaryClubId }],
         queryFn: () => {
             if (!campId) {
                 return [];
             }
             return listCamperProfilesByCampId(campId, rotaryClubId);
         },
-        staleTime: 60 * 1000, // 1 minute
     });
 }
 
@@ -49,7 +48,7 @@ export function useObserveCamperProfilesByCampQuery(campId?: string) {
     return useEffect(() => {
         if(campId) {
             const sub = observeCamperProfilesByCamp(campId, () => {
-                queryClient.invalidateQueries({ queryKey: ['camperProfilesByCamp', campId] });
+                queryClient.invalidateQueries({ queryKey: ['camperProfiles', campId] });
             });
             return () => sub.unsubscribe();
         }

@@ -1,8 +1,8 @@
 import { Table, Button, Placeholder, Badge, Dropdown, Form, Spinner, Modal, Alert } from "react-bootstrap";
 import { useActiveCampQuery, useListRotaryClubsQuery, useRecommendationQuery, useRotarianProfileQuery, useRotarianReviewQuery } from "../queries/queries";
-import { useCamperProfilesByCampQuery } from "../queries/adminQueries";
+import { useCamperProfilesQuery } from "../queries/adminQueries";
 import { useCreateRotarianReviewMutation, useUpdateProfileMutation, useUpdateRotarianReviewMutation } from "../queries/mutations";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "../App";
 import { Route, Routes, useNavigate } from "react-router";
 import { RotarianProfileSchemaType } from "../api/apiRotarianProfile";
@@ -23,6 +23,7 @@ import { createEDT, formatCampDates, formatDateFullWithTime, getCampYear } from 
 import "../styles/rotarian-page.scss";
 import { getCampApplicationStatus } from '../utils/camp';
 import { NotAcceptingApplications, PreDeadline, PastDeadlineRotarian } from "../components/alerts";
+import { useObserveCamperProfiles } from "../queries/subscriptions";
 
 const columnHelper = createColumnHelper<CamperProfileSchemaType>();
 
@@ -352,6 +353,9 @@ function SendToClubModal({ camperProfile, show, onClose }: { camperProfile: Camp
         }
     });
 
+    const campId = camperProfile.campId;
+    const rotaryClubId = camperProfile.rotaryClubId;
+
     const handleSendToClub = (data: { rotaryClubId: string }) => {
         const rotaryClubName = rotaryClubs?.find((club) => club.id === data.rotaryClubId)?.name;
 
@@ -361,7 +365,7 @@ function SendToClubModal({ camperProfile, show, onClose }: { camperProfile: Camp
         }, {
             onSuccess: () => {
                 emitToast(`Camper transferred to ${rotaryClubName} rotary club.`, ToastType.Success);
-                queryClient.invalidateQueries({ queryKey: ["camperProfilesByRotaryClub", camperProfile.rotaryClubId] });
+                queryClient.invalidateQueries({ queryKey: ["camperProfiles", { campId, rotaryClubId }] });
             },
             onSettled: () => {
                 onClose();
@@ -448,8 +452,17 @@ function RotarianTable() {
     const { data: rotarianProfile } = useRotarianProfileQuery(authContext.attributes.sub);
     const { data: activeCamp, isPending: isPendingActiveCamp, isError: isErrorActiveCamp } = useActiveCampQuery();
 
-    const { data: camperProfiles, isPending: isPendingCamperProfiles, isError: isErrorCamperProfiles } = useCamperProfilesByCampQuery(activeCamp?.id, rotarianProfile?.rotaryClubId);
+    const { data: camperProfiles, isPending: isPendingCamperProfiles, isError: isErrorCamperProfiles } = useCamperProfilesQuery(activeCamp?.id, rotarianProfile?.rotaryClubId);
+    
+    const queryClient = useQueryClient();
+    
 
+    useEffect(() => {
+        const sub = useObserveCamperProfiles(queryClient, activeCamp?.id, rotarianProfile?.rotaryClubId);
+
+        return () => sub.unsubscribe();
+    }, [queryClient,activeCamp?.id, rotarianProfile?.rotaryClubId]);
+    
     const isPending = isPendingActiveCamp || isPendingCamperProfiles;
     const isError = isErrorActiveCamp || isErrorCamperProfiles;
 
@@ -457,6 +470,8 @@ function RotarianTable() {
     const navigate = useNavigate();
 
     const data = useMemo(() => camperProfiles ?? [], [camperProfiles]);
+
+    const applicationDeadline = useMemo(() => createEDT(activeCamp?.applicationDeadline ?? ""), [activeCamp?.applicationDeadline]);
 
     const columns = useMemo(() => [
         columnHelper.accessor(row => getCamperName(row), {
@@ -521,7 +536,6 @@ function RotarianTable() {
 
     const LoadingTable = () => (
         <Table bordered>
-            <br/>
             <tbody>
                 <tr>
                     {table.getVisibleLeafColumns().map((column) => (
@@ -555,15 +569,15 @@ function RotarianTable() {
     let DeadlineStatus;
 
     if (applicationStatus === "accepting") {
-        DeadlineStatus = PreDeadline;
+        DeadlineStatus = <PreDeadline deadline={applicationDeadline}/>;
     }
     else {
-        DeadlineStatus = PastDeadlineRotarian;
+        DeadlineStatus = <PastDeadlineRotarian/>;
     }
 
     return (
         <div>
-            <DeadlineStatus />
+            {DeadlineStatus}
 
             <Table bordered responsive hover>
                 <thead>

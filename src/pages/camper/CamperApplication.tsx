@@ -21,6 +21,7 @@ import InputGroup from "react-bootstrap/InputGroup";
 import { useCreateRecommendationMutation, useResendRecommendationLinkMutation, useUpdateRecommendationMutation } from "../../queries/mutations";
 import { getCamperName, getFilepathFilename } from "../../utils/fields";
 import { DateTime } from "luxon";
+import { formatDateFull } from "../../utils/datetime";
 
 
 export function CamperApplicationView() {
@@ -118,6 +119,125 @@ export function CamperApplicationView() {
 
             <h5>Acknowledgements</h5>
             <ThinSpacer />
+            <p>You attest that the following information is true and accurate to the best of your knowledge.</p>
+            <Alert variant="light">
+            <div style={{ overflowX: 'auto' }}>
+                <table className="camper-app-details-table-tbody">
+                    <tbody>
+                        <tr>
+                            <th>Email</th>
+                            <td>{camperProfile?.email || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>First Name</th>
+                            <td>{camperProfile?.firstName || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Middle Initial</th>
+                            <td>{camperProfile?.middleInitial || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Last Name</th>
+                            <td>{camperProfile?.lastName || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Nickname</th>
+                            <td>{camperProfile?.nickname || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Date of Birth</th>
+                            <td>{camperProfile?.birthdate ? formatDateFull(createFromISO(camperProfile?.birthdate)) : ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Gender</th>
+                            <td>{camperProfile?.gender || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>High School</th>
+                            <td>{camperProfile?.highSchool || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Rotary Club</th>
+                            <td>{rotaryClub?.name || ''}</td>
+                        </tr>
+                        
+                        <tr>
+                            <th>Phone</th>
+                            <td>{camperProfile?.phone || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Address</th>
+                            <td>{camperProfile?.address || ''}
+                                <br/>
+                                {camperProfile?.city || ''} {camperProfile?.state || ''} {camperProfile?.zipcode || ''}
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td colSpan={2}>
+                                <hr/>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th>Parent 1 Name</th>
+                            <td>{[camperProfile?.parent1FirstName, camperProfile?.parent1LastName].filter(Boolean).join(' ') || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Parent 1 Email</th>
+                            <td>{camperProfile?.parent1Email || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Parent 1 Phone</th>
+                            <td>{camperProfile?.parent1Phone || ''}</td>
+                        </tr>
+                        <br/>
+                        <tr>
+                            <th>Parent 2 Name</th>
+                            <td>{[camperProfile?.parent2FirstName, camperProfile?.parent2LastName].filter(Boolean).join(' ') }</td>
+                        </tr>
+                        <tr>
+                            <th>Parent 2 Email</th>
+                            <td>{camperProfile?.parent2Email }</td>
+                        </tr>
+                        <tr>
+                            <th>Parent 2 Phone</th>
+                            <td>{camperProfile?.parent2Phone }</td>
+                        </tr>
+                        <tr>
+                            <td colSpan={2}>
+                                <hr/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Dietetary Restrictions</th>
+                            <td>{camperProfile?.dietaryRestrictions || ''}</td>
+                        </tr>
+                        
+                        <tr>
+                            <th>Dietary Restrictions Notes</th>
+                            <td>{camperProfile?.dietaryRestrictionsNotes || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Emergency Contact Name</th>
+                            <td>{camperProfile?.emergencyContactName || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Emergency Contact Phone</th>
+                            <td>{camperProfile?.emergencyContactPhone || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Emergency Contact Relationship</th>
+                            <td>{camperProfile?.emergencyContactRelationship || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Shirt Size</th>
+                            <td>{camperProfile?.tshirtSize || ''}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            </Alert>
             <Alert variant="warning">
                 <FontAwesomeIcon icon={faCircleExclamation} style={{ marginRight: 10 }} />
                 <strong>Students: Please read the following information carefully</strong>

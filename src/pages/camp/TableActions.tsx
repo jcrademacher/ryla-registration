@@ -157,6 +157,7 @@ function ConfirmDocumentReceivedModal({
     const selectedCampers = table.getSelectedRowModel().rows.map(row => row.original);
 
     const { mutate: uploadDocuments, isPending: isUploadingDocuments } = useUploadMultipleCamperDocumentsMutation();
+    const { mutate: receivedDocumentEmail } = useReceivedDocumentEmailMutation();
     const queryClient = useQueryClient();
 
     const handleConfirm = () => {
@@ -181,6 +182,11 @@ function ConfirmDocumentReceivedModal({
                 onSuccess: () => {
                     selectedCampers.forEach(camper => {
                         queryClient.invalidateQueries({ queryKey: ['documentStatus', camper.campId, camper.userSub] });
+
+                        receivedDocumentEmail({
+                            templateName: documentTemplate?.name ?? '',
+                            to: [camper.email, camper.parent1Email],
+                        });
                     });
 
                     emitToast(`'${documentTemplate.name}' marked as received for ${selectedCampers.length} campers`, ToastType.Success);
@@ -206,7 +212,7 @@ function ConfirmDocumentReceivedModal({
             The following camper(s) will have their "{documentTemplate?.name}" document marked as received:
             <ul>
                 {selectedCampers.map(camper => (
-                    <li key={camper.userSub}>getCamperName(camper)</li>
+                    <li key={camper.userSub}>{getCamperName(camper)}</li>
                 ))}
             </ul>
             Are you sure you want to do this?

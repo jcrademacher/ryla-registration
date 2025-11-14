@@ -138,7 +138,7 @@ const ApplicationTabs = () => {
             case "application":
                 return !camperProfile?.profileComplete;
             case "rotary-club-review":
-                return !camperProfile?.applicationComplete;
+                return !camperProfile?.applicationComplete && rotarianReview?.review !== "APPROVED";
             case "important-documents":
                 return rotarianReview?.review !== "APPROVED";
             default:
@@ -277,8 +277,7 @@ function CamperProfileView() {
 
     const {
         data: rotarianReview,
-        isPending: isPendingRotarianReview
-    } = useRotarianReviewQuery();
+    } = useRotarianReviewQuery(camperProfile?.userSub);
 
     // useEffect(() => {
     //     if (camperProfile?.profileComplete && !camperProfile?.applicationComplete && !rotarianReview?.review) {
@@ -309,7 +308,7 @@ function CamperProfileView() {
                     } />
                     <Route path="/rotary-club-review" element={
                         <ProtectedRoute
-                            hasAccess={camperProfile?.applicationComplete}
+                            hasAccess={camperProfile?.applicationComplete || rotarianReview?.review === "APPROVED"}
                             fallbackPath="/camper/application"
                         >
                             <CamperRotaryClubReview />
@@ -317,7 +316,7 @@ function CamperProfileView() {
                     } />
                     <Route path="/important-documents" element={
                         <ProtectedRoute
-                            hasAccess={isPendingRotarianReview || rotarianReview?.review === "APPROVED"}
+                            hasAccess={rotarianReview?.review === "APPROVED"}
                             fallbackPath="/camper/rotary-club-review"
                         >
                             <CamperImportantDocuments />
@@ -351,10 +350,10 @@ function CampInformation() {
     let DeadlineStatus;
 
     if (applicationStatus === "accepting") {
-        DeadlineStatus = PreDeadline;
+        DeadlineStatus = <PreDeadline deadline={applicationDeadline}/>;
     }
     else {
-        DeadlineStatus = PastDeadlineCamper;
+        DeadlineStatus = <PastDeadlineCamper/>;
     }
 
     return (
@@ -371,7 +370,7 @@ function CampInformation() {
             </ul>
 
 
-            <DeadlineStatus/>
+            {DeadlineStatus}
             <CamperProfileView/>
         </div>
     )
