@@ -284,8 +284,9 @@ export function useRotaryClubQuery(rotaryClubId?: string | null) {
 export function useListRotaryClubsQuery() {
     return useQuery({
         queryKey: ["rotaryClubs"],
-        queryFn: () => {
-            return listRotaryClubs();
+        queryFn: async () => {
+            const clubs = await listRotaryClubs();
+            return clubs?.sort((a, b) => a.name.localeCompare(b.name));
         }
     });
 }
