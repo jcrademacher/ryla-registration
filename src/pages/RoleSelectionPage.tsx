@@ -8,6 +8,7 @@ import { useRequestRotarianAccountMutation, useSetUserAsCamperMutation } from '.
 import { refreshAuthSession } from '../api/auth';
 import { useRotarianProfileQuery, useListRotaryClubsQuery } from '../queries/queries';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSendRotarianRequestEmailMutation } from '../queries/emailMutations';
 // import { useSelectUserRoleMutation } from '../queries/mutations';
 
 type Role = 'CAMPER' | 'ROTARIAN';
@@ -32,6 +33,8 @@ export const RoleSelectionPage: React.FC = () => {
     const setUserAsCamper = useSetUserAsCamperMutation();
     const { data: rotarianProfile, isLoading } = useRotarianProfileQuery(authContext.attributes.sub);
     const { data: rotaryClubs, isPending: isPendingRotaryClubs } = useListRotaryClubsQuery();
+
+    const { mutate: sendRotarianRequestEmail } = useSendRotarianRequestEmailMutation();
 
     const handleAuthRefresh = useCallback(async () => {
         await refreshAuthSession(true);
@@ -91,6 +94,12 @@ export const RoleSelectionPage: React.FC = () => {
                     onSuccess: async () => {
                         await handleAuthRefresh();
                         setRoleSelectionComplete(true);
+
+                        sendRotarianRequestEmail({
+                            name: data.firstName + " " + data.lastName,
+                            email: authContext.attributes.email ?? '',
+                            rotaryClub: rotaryClubs?.find((club) => club.id === data.rotaryClubId)?.name ?? '',
+                        });
                     }
                 });
             } else {

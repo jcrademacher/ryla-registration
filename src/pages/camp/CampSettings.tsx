@@ -227,7 +227,7 @@ export const CampSettings = () => {
 
     return (
         <div className="side-pad-20">
-            <h3>{camp ? `RYLA ${createEDT(camp.startDate).year}` : ""} Settings</h3>
+            <h3>{camp?.name ? camp.name : `RYLA ${createEDT(camp?.startDate ?? "").year}`} Settings</h3>
             <ThinSpacer />
 
             <Form onSubmit={handleSubmit(onSubmit)}>
