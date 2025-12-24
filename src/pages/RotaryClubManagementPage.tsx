@@ -193,9 +193,9 @@ export const RotaryClubManagementPage: React.FC = () => {
 
     return (
         <div className="rotary-club-management">
-            <div className="d-flex justify-content-between align-items-center mb-4">
+            <div className="d-flex justify-content-between align-items-center">
                 <div>
-                    <h1>Rotary Club Management</h1>
+                    <h3>Rotary Club Management</h3>
                     <p className="text-muted">Manage rotary clubs and their settings</p>
                 </div>
                 <div>

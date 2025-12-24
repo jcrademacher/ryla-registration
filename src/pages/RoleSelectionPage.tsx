@@ -4,47 +4,50 @@ import { useForm } from 'react-hook-form';
 import { AuthContext } from '../App';
 import { emitToast, ToastType } from '../utils/notifications';
 import { SpinnerButton } from '../utils/button';
-import { useRequestRotarianAccountMutation, useSetUserAsCamperMutation } from '../queries/mutations';
+import { useCreateGroupRequestMutation, useSetUserAsCamperMutation } from '../queries/mutations';
 import { refreshAuthSession } from '../api/auth';
-import { useRotarianProfileQuery, useListRotaryClubsQuery } from '../queries/queries';
+import { useGroupRequestQuery, useListRotaryClubsQuery } from '../queries/queries';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSendRotarianRequestEmailMutation } from '../queries/emailMutations';
+import { GroupRequestSchemaType } from '../api/apiGroupRequest';
 // import { useSelectUserRoleMutation } from '../queries/mutations';
 
 type Role = 'CAMPER' | 'ROTARIAN';
 
 interface RoleSelectForm {
     role: Role;
-    firstName: string | null;
-    lastName: string | null;
+    firstName: string;
+    lastName: string;
     rotaryClubId: string | null;
 }
 
 export const RoleSelectionPage: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [_, setRoleSelectionComplete] = useState(false);
+    const [roleSelectionComplete, setRoleSelectionComplete] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // const selectUserRoleMutation = useSelectUserRoleMutation();
     const authContext = useContext(AuthContext);
     const queryClient = useQueryClient();
 
-    const requestRotarianAccount = useRequestRotarianAccountMutation();
+    const { 
+        data: groupRequests, 
+        isPending: isPendingGroupRequests
+    } = useGroupRequestQuery(authContext.attributes.sub);
+
+    const { mutate: createGroupRequest } = useCreateGroupRequestMutation();
     const setUserAsCamper = useSetUserAsCamperMutation();
-    const { data: rotarianProfile, isLoading } = useRotarianProfileQuery(authContext.attributes.sub);
     const { data: rotaryClubs, isPending: isPendingRotaryClubs } = useListRotaryClubsQuery();
 
-    const { mutate: sendRotarianRequestEmail } = useSendRotarianRequestEmailMutation();
+    // const { mutate: sendRotarianRequestEmail } = useSendRotarianRequestEmailMutation();
 
     const handleAuthRefresh = useCallback(async () => {
         await refreshAuthSession(true);
         queryClient.invalidateQueries({ queryKey: ["user", authContext.attributes.sub]});
-        queryClient.invalidateQueries({ queryKey: ["rotarianProfile", authContext.attributes.sub]});
     }, [authContext.attributes.sub, queryClient]);
 
     // Set up interval to call handleAuthRefresh every 5 seconds after role selection is complete
     useEffect(() => {
-        if (rotarianProfile) {
+        if (roleSelectionComplete || (groupRequests)) {
             // Start the interval
             intervalRef.current = setInterval(() => {
                 handleAuthRefresh();
@@ -58,7 +61,7 @@ export const RoleSelectionPage: React.FC = () => {
                 }
             };
         }
-    }, [rotarianProfile, handleAuthRefresh]);
+    }, [roleSelectionComplete, handleAuthRefresh, groupRequests]);
 
     const FirstRequestView = () => {
         const {
@@ -84,7 +87,8 @@ export const RoleSelectionPage: React.FC = () => {
 
             // Redirect based on role
             if (data.role === 'ROTARIAN') {
-                requestRotarianAccount.mutate({
+                createGroupRequest({
+                    group: 'ROTARIANS',
                     userSub: authContext.attributes.sub ?? '',
                     email: authContext.attributes.email ?? '',
                     firstName: data.firstName,
@@ -94,12 +98,9 @@ export const RoleSelectionPage: React.FC = () => {
                     onSuccess: async () => {
                         await handleAuthRefresh();
                         setRoleSelectionComplete(true);
-
-                        sendRotarianRequestEmail({
-                            name: data.firstName + " " + data.lastName,
-                            email: authContext.attributes.email ?? '',
-                            rotaryClub: rotaryClubs?.find((club) => club.id === data.rotaryClubId)?.name ?? '',
-                        });
+                    },
+                    onSettled: () => {
+                        queryClient.invalidateQueries({ queryKey: ["groupRequest"] });
                     }
                 });
             } else {
@@ -239,9 +240,9 @@ export const RoleSelectionPage: React.FC = () => {
                             <h3 className="text-center mb-0">Account Setup</h3>
                         </Card.Header>
                         <Card.Body>
-                            {isLoading ? 
+                            {isPendingGroupRequests ? 
                                 <Placeholder animation='glow'><Placeholder xs={8}/> </Placeholder>
-                            : (!rotarianProfile ? <FirstRequestView /> : <>Rotarian account request submitted. Your account is being reviewed. </>)}
+                            : (groupRequests ? <PostRequestView groupRequests={[groupRequests]} /> : <FirstRequestView />)}
                         </Card.Body>
                     </Card>
                 </Col>
@@ -249,3 +250,23 @@ export const RoleSelectionPage: React.FC = () => {
         </div>
     );
 }; 
+
+function PostRequestView({ groupRequests }: { groupRequests: GroupRequestSchemaType[] }) {
+    const { data: rotaryClubs } = useListRotaryClubsQuery();
+
+    return (
+        <div>
+            <p>Your account request has been submitted. Open requests:</p>
+            {groupRequests.map((request) => (
+                <Alert key={request.userSub} variant="info">
+                    <div><b>Group:</b> {request.group}</div>
+                    <div><b>First Name:</b> {request.firstName}</div>
+                    <div><b>Last Name:</b> {request.lastName}</div>
+                    <div><b>Email:</b> {request.email}</div>
+                    <div><b>Rotary Club:</b> {rotaryClubs?.find((club) => club.id === request.rotaryClubId)?.name ?? 'N/A'}</div>
+                </Alert>
+            ))}
+            Your account is being reviewed. You will be notified by email when your account is approved.
+        </div>
+    );
+}

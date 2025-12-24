@@ -1,5 +1,5 @@
 
-import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminRemoveUserFromGroupCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminListGroupsForUserCommand, AdminRemoveUserFromGroupCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 
 const client = new CognitoIdentityProviderClient();
@@ -31,7 +31,7 @@ export const deleteUser = async (username: string, userPoolId: string) => {
     return response;
 }
 
-export const addUserToGroups = async (username: string, groupNames: AuthGroup[], userPoolId: string) => {
+export const addUserToGroups = async (username: string, groupNames: string[], userPoolId: string) => {
     let response;
     for (const groupName of groupNames) {
         const command = new AdminAddUserToGroupCommand({
@@ -46,7 +46,7 @@ export const addUserToGroups = async (username: string, groupNames: AuthGroup[],
     return response;
 }
 
-export const removeUserFromGroups = async (username: string, groupNames: AuthGroup[], userPoolId: string) => {
+export const removeUserFromGroups = async (username: string, groupNames: string[], userPoolId: string) => {
     let response;
     for (const groupName of groupNames) {
         const command = new AdminRemoveUserFromGroupCommand({
@@ -59,6 +59,16 @@ export const removeUserFromGroups = async (username: string, groupNames: AuthGro
     }
 
     return response
+}
+
+export const getGroupsForUser = async (username: string, userPoolId: string) => {
+    const command = new AdminListGroupsForUserCommand({
+        UserPoolId: userPoolId,
+        Username: username
+    });
+
+    const response = await client.send(command);
+    return response.Groups;
 }
 
 

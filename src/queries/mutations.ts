@@ -14,13 +14,15 @@ import {
     updateCamperDocumentStatus
 } from "../api/apiDocuments.ts";
 import { remove, TransferProgressEvent } from "aws-amplify/storage";
-import { createRotarianProfile, CreateRotarianProfileSchemaType, updateRotarianProfile, UpdateRotarianProfileSchemaType } from "../api/apiRotarianProfile.ts";
+import { updateRotarianProfile, UpdateRotarianProfileSchemaType } from "../api/apiRotarianProfile.ts";
 import { AuthGroup } from "../../amplify/auth/utils.ts";
-import { setUserGroup, deleteUser, isUserCamper, isUserRotarian, getUserSubFromAttr } from "../api/auth.ts";
+import { setUserGroup, deleteUser } from "../api/auth.ts";
 import { deleteRotarianProfile } from "../api/apiRotarianProfile.ts";
 import { createRotarianReview, deleteRotarianReview, getRotarianReview, RotarianReviewDecision, updateRotarianReview } from "../api/apiRotarianReview.ts";
 import { createRecommendation, updateRecommendation, UpdateRecommendationSchemaType, uploadRecommendationUnauthenticated } from "../api/apiRecommendations.ts";
 import { sendRecommendationLinkEmail } from "../api/apiEmail.ts";
+import { CreateGroupRequestSchemaType, createGroupRequest } from "../api/apiGroupRequest.ts";
+
 
 export function useUpdateProfileMutation() {
     return useMutation({
@@ -74,15 +76,11 @@ export function useUploadCamperApplicationMutation() {
     });
 }
 
-export function useRequestRotarianAccountMutation() {
+export function useCreateGroupRequestMutation() {
     return useMutation({
-        mutationKey: ['requestRotarianAccount'],
-        mutationFn: (data: CreateRotarianProfileSchemaType) => {
-            if (!data.userSub) {
-                throw new Error("User ID missing. Check auth flow.");
-            }
-            
-            return createRotarianProfile(data);
+        mutationKey: ['createGroupRequest'],
+        mutationFn: (data: CreateGroupRequestSchemaType) => {
+            return createGroupRequest(data);
         }
     });
 }
@@ -111,21 +109,6 @@ export function useSetUserAsCamperMutation() {
     });
 }
 
-export function useSetUserAsRotarianMutation() {
-    return useMutation({
-        mutationKey: ['setUserAsRotarian'],
-        mutationFn: async (userSub: string | undefined) => {
-            if(!userSub) {
-                throw new Error("User sub missing. Check auth flow.");
-            }
-            else {
-                await setUserGroup(userSub, "ROTARIANS");
-                return await updateRotarianProfile({ userSub, approved: true });
-            }
-        }
-    });
-}
-
 export function useSetUserGroupMutation() {
     return useMutation({
         mutationKey: ['setUserGroup'],
@@ -148,24 +131,22 @@ export function useSetUserGroupMutation() {
 export function useDeleteUserMutation() {
     return useMutation({
         mutationKey: ['deleteUser'],
-        mutationFn: async ({ user, userGroups }: { user: any, userGroups: any }) => {
-            const userSub = getUserSubFromAttr(user.Attributes);
-            console.log(user,userGroups);
+        mutationFn: async ({ userSub }: { userSub: string }) => {
 
             if (!userSub) {
                 throw new Error("User sub missing. Check auth flow.");
             }
 
-            if(isUserCamper(userGroups)) {
+            // if(isUserCamper(userGroups)) {
                 console.log("Deleting camper profile");
                 await deleteCamperProfile(userSub);
                 console.log("Deleting camper rotarian review");
                 await deleteRotarianReview(userSub);
-            }
-            else if(isUserRotarian(userGroups)) {
+            // }
+            // else if(isUserRotarian(userGroups)) {
                 console.log("Deleting rotarian profile");
                 await deleteRotarianProfile(userSub);
-            }
+            // }
 
             console.log("Deleting user");
             return deleteUser(userSub);

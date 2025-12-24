@@ -2,13 +2,13 @@ import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 import { createRotarianUser } from "../functions/create-rotarian-user/resource";
 import { setUserRoleToCamper } from "../functions/set-user-role-to-camper/resource";
 import { listUsers } from "../functions/list-users/resource";
-import { listGroupsForUser } from "../functions/list-groups-for-user/resource";
 import { setUserGroup } from "../functions/set-user-group/resource";
 import { AUTH_GROUPS } from "../auth/utils";
 import { deleteUser } from "../functions/delete-user/resource";
 import { getUser } from "../functions/get-user/resource";
 import { sendEmail } from "../functions/send-email/resource";
 import { generateCamperPdf } from "../functions/generate-camper-pdf/resource";
+import { sendEmailToAdmins } from "../functions/send-email-to-admins/resource";
 // import { generateInviteCode } from "../functions/generate-invite-code/resource";
 // import { selectUserRole } from "../functions/select-user-role/resource";
 
@@ -117,7 +117,10 @@ const schema = a.schema({
         received: a.boolean(),
         templateId: a.id().required(),
         template: a.belongsTo('DocumentTemplate', 'templateId'),
-        owner: a.string(),
+        owner: a.string().authorization((allow) => [
+            allow.owner().to(['read']),
+            allow.group("ADMINS").to(["read", "update", "delete"]),
+        ]),
         approved: a.boolean().default(true),
     })
     .identifier(['camperUserSub', 'templateId'])
@@ -180,13 +183,31 @@ const schema = a.schema({
         rotaryClubId: a.id(),
         rotaryClub: a.belongsTo('RotaryClub', 'rotaryClubId'),
         email: a.email().required(),
-        approved: a.boolean()
+        approved: a.boolean(),
+        owner: a.string().authorization((allow) => [
+            allow.owner().to(['read']),
+            allow.group("ADMINS").to(["create", "read", "update", "delete"]),
+        ]),
     })
         .identifier(['userSub'])
         .authorization((allow) => [
             allow.owner(),
             allow.group("ADMINS").to(["create", "read", "update", "delete"]),
-            allow.group("NEW").to(["create", "read"])
+        ]),
+
+    GroupRequest: a.model({
+        userSub: a.id().required(),
+        firstName: a.string().required(),
+        lastName: a.string().required(),
+        email: a.email().required(),
+        group: a.string().required(),
+        rotaryClubId: a.id()
+    })
+        .identifier(['userSub'])
+        .authorization((allow) => [
+            allow.owner(),
+            allow.group("ADMINS").to(["read", "update", "delete"]),
+            allow.group("NEW").to(["create"])
         ]),
 
     RotarianReviewDecision: a.enum(["APPROVED", "REJECTED"]),
@@ -241,20 +262,19 @@ const schema = a.schema({
         .handler(a.handler.function(setUserGroup))
         .returns(a.json()),
 
+    UserProfile: a.customType({
+        userSub: a.id().required(),
+        email: a.string().required(),
+        groupNames: a.string().required().array().required(),
+        createdAt: a.datetime().required(),
+        verified: a.boolean().required(),
+    }),
+
     listUsers: a
         .query()
         .authorization((allow) => [allow.group("ADMINS")])
         .handler(a.handler.function(listUsers))
-        .returns(a.json()),
-
-    listGroupsForUser: a
-        .query()
-        .arguments({
-            username: a.string().required()
-        })
-        .authorization((allow) => [allow.group("ADMINS")])
-        .handler(a.handler.function(listGroupsForUser))
-        .returns(a.json()),
+        .returns(a.ref('UserProfile').required().array().required()),
 
     deleteUser: a
         .mutation()
@@ -284,6 +304,17 @@ const schema = a.schema({
         })
         .authorization((allow) => [allow.authenticated()])
         .handler(a.handler.function(sendEmail))
+        .returns(a.json()),
+
+    sendEmailToAdmins: a
+        .mutation()
+        .arguments({
+            subject: a.string().required(),
+            body: a.string().required(),
+            replyTo: a.string()
+        })
+        .authorization((allow) => [allow.authenticated()])
+        .handler(a.handler.function(sendEmailToAdmins))
         .returns(a.json()),
         
     generateCamperPdf: a

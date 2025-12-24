@@ -22,7 +22,7 @@ export const AdminPage: React.FC = () => {
 
     return (
         <div className="admin-page">
-            <h1>Admin Dashboard</h1>
+            <h3>Admin Dashboard</h3>
             <p>Welcome to the admin panel. Select an area to manage:</p>
             
             <Row className="d-flex justify-content-evenly flex-wrap">

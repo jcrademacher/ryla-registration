@@ -13,7 +13,68 @@ import { DateTime } from "luxon";
 import { TransferProgressEvent } from "aws-amplify/storage";
 import { CreateDocumentTemplateSchemaType, deleteDocumentTemplate, DocumentTemplateSchemaType, uploadDocumentTemplate } from "../api/apiDocuments";
 import { createRotaryClub, CreateRotaryClubSchemaType, UpdateRotaryClubSchemaType, updateRotaryClub } from "../api/apiRotaryClub";
+import { GroupRequestSchemaType, deleteGroupRequest } from "../api/apiGroupRequest";
+import { sendEmail } from "../api/apiEmail";
+import { setUserGroup } from "../api/auth";
+import { createRotarianProfile, getRotarianProfile, updateRotarianProfile } from "../api/apiRotarianProfile";
 
+export function useDecideGroupRequestMutation() {
+    return useMutation({
+        mutationKey: ['decideGroupRequest'],
+        mutationFn: async ({ request, decision }: { request: GroupRequestSchemaType, decision: "approve" | "reject" }) => {
+            let retval;
+
+            if(decision === "approve") {
+                if(request.group === "ROTARIANS") {
+                    const cat = `${window.location.origin}/rotarian`;
+
+                    const existingRotarianProfile = await getRotarianProfile(request.userSub);
+                    const newProfile = { 
+                        userSub: request.userSub, email: request.email,
+                        firstName: request.firstName,
+                        lastName: request.lastName,
+                        rotaryClubId: request.rotaryClubId,
+                        approved: true,
+                        owner: request.userSub
+                    };
+
+                    if(existingRotarianProfile) {
+                        retval = await updateRotarianProfile(newProfile);
+                    }
+                    else {
+                        retval = await createRotarianProfile(newProfile);
+                    }
+
+                    await setUserGroup(request.userSub, "ROTARIANS");
+
+                    sendEmail(
+                        [request.email],
+                        "Rotarian Account Approved",
+                        `
+                            <p>Your request for a rotarian account has been approved.</p>
+                            <p>Visit <a href="${cat}">${cat}</a> to manage camper applications.</p>
+                        `
+                    );
+                }
+                else {
+                    throw new Error(`Invalid group: ${request.group}. Account requests are only supported for rotarians at this time.`);
+                }
+            }
+            else {
+                const body = 
+                `
+                    <p>Your request to join the ${request.group} group has been denied. Please contact the camp directors for more information.</p>
+                `;
+
+                sendEmail([request.email], "Account Request Denied", body);
+            }
+
+            await deleteGroupRequest(request.userSub);
+
+            return retval;
+        }
+    });
+}
 
 function checkForExistingApplicationsOpen(thisCamp: CampSchemaType | UpdateCampSchemaType | CreateCampSchemaType, otherCamps: CampSchemaType[] | null | undefined) {
     const now = DateTime.now();

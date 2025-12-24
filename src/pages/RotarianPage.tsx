@@ -88,7 +88,7 @@ function ClubView({ rotarianProfile }: { rotarianProfile?: RotarianProfileSchema
                             {activeCamp ? `RYLA ${getCampYear(activeCamp)}, ${formatCampDates(activeCamp)}` : "None upcoming"}
                         </div>
                         <div>
-                            <small className="text-muted">Applications are due by {applicationDeadline}</small>
+                            {activeCamp && <small className="text-muted">Applications are due by {applicationDeadline}</small>}
                         </div>
                     </td>
                 </tr>

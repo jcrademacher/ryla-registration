@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getCamperProfile, getRotarianReviewFromCamperSub, getCamperYearByUserSub} from "../api/apiCamperProfile";
-import { getUser, getUserAttributes, getUserGroups, listAllUsers, listGroupsForUser } from "../api/auth";
+import { getUser, getUserAttributes, getUserGroups, listAllUsers } from "../api/auth";
 import { getCamperApplicationFilename, getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
 import { getRotarianProfile } from "../api/apiRotarianProfile";
-import { AuthGroup } from "../../amplify/auth/utils";
 import { listCamperDocuments } from "../api/apiDocuments";
 import { getRotaryClub, listRotaryClubs } from "../api/apiRotaryClub";
 import { getRecommendationUnauthenticated, getRecommendations } from "../api/apiRecommendations";
+import { listGroupRequests, getGroupRequest } from "../api/apiGroupRequest";
 import { queryOptions } from '@tanstack/react-query'
 import { useContext } from "react";
 import { AuthContext } from "../App";
@@ -112,22 +112,6 @@ export function useListUsersQuery() {
         queryKey: ["users"],
         queryFn: listAllUsers,
         refetchInterval: 10 * 1000
-    });
-}
-
-export function useListGroupsForUserQuery(userSub: string | undefined) {
-    return useQuery({
-        queryKey: ["userGroups", userSub],
-        queryFn: () => {
-            if (userSub) {
-                return listGroupsForUser(userSub);
-            }
-            else {
-                throw new Error("Cannot find username to list group")
-            }
-        },
-        enabled: !!userSub,
-        select: (data): AuthGroup[] => data.Groups.map((g: { GroupName: string }) => g.GroupName),
     });
 }
 
@@ -315,6 +299,29 @@ export function useRecommendationUnauthenticatedQuery(recId?: string | null) {
                 return null;
             }
             return getRecommendationUnauthenticated(recId);
+        },
+    });
+}
+
+export function useListGroupRequestsQuery(enabled?: boolean) {
+    return useQuery({
+        queryKey: ["groupRequests"],
+        queryFn: () => {
+            return listGroupRequests();
+        },
+        refetchInterval: 10 * 1000,
+        enabled: enabled === undefined ? true : enabled
+    });
+}
+
+export function useGroupRequestQuery(id?: string | null) {
+    return useQuery({
+        queryKey: ["groupRequest", id],
+        queryFn: () => {
+            if(!id) {
+                return null;
+            }
+            return getGroupRequest(id);
         },
     });
 }

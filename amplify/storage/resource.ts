@@ -2,6 +2,7 @@ import { defineStorage } from '@aws-amplify/backend';
 import { generateCamperPdf } from '../functions/generate-camper-pdf/resource';
 
 // https://github.com/aws-amplify/amplify-js/issues/54#issuecomment-808501886
+// https://github.com/aws-amplify/amplify-backend/issues/1771
 
 export const storage = defineStorage({
   name: 'rylaRegistrationStorage',

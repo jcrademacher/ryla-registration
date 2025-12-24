@@ -2,18 +2,19 @@ import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { storage } from './storage/resource';
-import { SESClient } from '@aws-sdk/client-ses';
 
 import * as iam from "aws-cdk-lib/aws-iam";
 import { listUsers } from "./functions/list-users/resource";
 import { sendEmail } from "./functions/send-email/resource";
+import { sendEmailToAdmins } from "./functions/send-email-to-admins/resource";
 
 const backend = defineBackend({
     auth,
     data,
     storage,
     listUsers,
-    sendEmail
+    sendEmail,
+    sendEmailToAdmins
 });
 
 const lambdaFunction = backend.listUsers.resources.lambda;
@@ -28,8 +29,7 @@ lambdaFunction.role?.attachInlinePolicy(
     })
 );
 
-const sendTestEmailLambdaFunction = backend.sendEmail.resources.lambda;
-sendTestEmailLambdaFunction.role?.attachInlinePolicy(
+const sendEmailPolicy =     
     new iam.Policy(backend.auth.resources.userPool, "AllowSendEmail", {
         statements: [
             new iam.PolicyStatement({
@@ -38,4 +38,10 @@ sendTestEmailLambdaFunction.role?.attachInlinePolicy(
             }),
         ],
     })
-);
+
+const sendEmailLambdaFunction = backend.sendEmail.resources.lambda;
+sendEmailLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
+
+const sendEmailToAdminsLambdaFunction = backend.sendEmailToAdmins.resources.lambda;
+sendEmailToAdminsLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
+

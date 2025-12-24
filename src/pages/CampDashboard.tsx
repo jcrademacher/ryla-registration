@@ -196,7 +196,7 @@ export const CampDashboard: React.FC = () => {
 
     return (
         <div className="camp-dashboard">
-            <h1>Camp Dashboard</h1>
+            <h3>Camp Dashboard</h3>
             <p>Manage RYLA camps by year and view camp statistics.</p>
 
             {/* Add Camp Button */}

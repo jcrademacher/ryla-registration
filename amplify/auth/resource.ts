@@ -4,11 +4,11 @@ import { createRotarianUser } from "../functions/create-rotarian-user/resource"
 import { postConfirmationAddToGroup } from '../functions/post-confirmation-add-to-group/resource';
 import { setUserRoleToCamper } from '../functions/set-user-role-to-camper/resource';
 import { listUsers } from '../functions/list-users/resource';
-import { listGroupsForUser } from '../functions/list-groups-for-user/resource';
 import { AUTH_GROUPS } from './utils';
 import { setUserGroup } from '../functions/set-user-group/resource';
 import { deleteUser } from '../functions/delete-user/resource';
 import { getUser } from '../functions/get-user/resource';
+import { sendEmailToAdmins } from '../functions/send-email-to-admins/resource';
 
 // import { selectUserRole } from '../functions/select-user-role/resource';
 
@@ -53,11 +53,11 @@ export const auth = defineAuth({
     access: (allow) => [
         allow.resource(createRotarianUser).to(["createUser"]),
         allow.resource(postConfirmationAddToGroup).to(["addUserToGroup"]),
-        allow.resource(setUserRoleToCamper).to(["addUserToGroup", "removeUserFromGroup"]),
+        allow.resource(setUserRoleToCamper).to(["removeUserFromGroup"]),
         allow.resource(listUsers).to(["manageUsers"]),
-        allow.resource(listGroupsForUser).to(["listGroupsForUser"]),
         allow.resource(setUserGroup).to(["addUserToGroup", "removeUserFromGroup"]),
         allow.resource(deleteUser).to(["deleteUser"]),
-        allow.resource(getUser).to(["getUser"])
+        allow.resource(getUser).to(["getUser"]),
+        allow.resource(sendEmailToAdmins).to(["listUsersInGroup"]),
     ]
 });
