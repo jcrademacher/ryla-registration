@@ -169,7 +169,9 @@ const schema = a.schema({
         rotarians: a.hasMany('RotarianProfile', 'rotaryClubId'),
         camperProfiles: a.hasMany('CamperProfile', 'rotaryClubId'),
         requiresApplication: a.boolean(),
-        requiresLetterOfRecommendation: a.boolean()
+        requiresLetterOfRecommendation: a.boolean(),
+        numRequiredLetters: a.integer(),
+        requiresInterview: a.boolean()
     })
     .authorization((allow) => [
         allow.authenticated().to(["read"]),
