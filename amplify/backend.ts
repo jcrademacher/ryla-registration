@@ -7,6 +7,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import { listUsers } from "./functions/list-users/resource";
 import { sendEmail } from "./functions/send-email/resource";
 import { sendEmailToAdmins } from "./functions/send-email-to-admins/resource";
+import { sendEmailToClubReps } from "./functions/send-email-to-club-reps/resource"
 
 const backend = defineBackend({
     auth,
@@ -14,7 +15,8 @@ const backend = defineBackend({
     storage,
     listUsers,
     sendEmail,
-    sendEmailToAdmins
+    sendEmailToAdmins,
+    sendEmailToClubReps
 });
 
 const lambdaFunction = backend.listUsers.resources.lambda;
@@ -44,4 +46,7 @@ sendEmailLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
 
 const sendEmailToAdminsLambdaFunction = backend.sendEmailToAdmins.resources.lambda;
 sendEmailToAdminsLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
+
+const sendEmailToClubRepsLambdaFunction = backend.sendEmailToClubReps.resources.lambda;
+sendEmailToClubRepsLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
 

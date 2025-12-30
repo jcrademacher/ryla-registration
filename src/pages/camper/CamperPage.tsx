@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useMemo } from 'react';
-import { Alert, Badge, Placeholder, Tab, Tabs } from 'react-bootstrap';
+import { Alert, Badge, Container, Placeholder, Tab, Tabs } from 'react-bootstrap';
 import { AuthContext } from '../../App';
 import {
     faCircle,
@@ -19,6 +19,7 @@ import '../../styles/camper-page.scss';
 import { createFromISO, formatDateFullWithTime } from '../../utils/datetime';
 import { getCampApplicationStatus } from '../../utils/camp';
 import { NotAcceptingApplications, PreDeadline, PastDeadlineCamper } from '../../components/alerts';
+import { useEffect } from 'react';
 
 
 const ApplicationTabs = () => {
@@ -260,12 +261,12 @@ export const CamperPage: React.FC = () => {
     }
 
     return (
-        <div className="side-pad-10">
+        <Container>
             <h3>Camper Portal</h3>
             <p>Welcome to the camper portal. Here you can manage your application and view program information.</p>
 
             {Content}
-        </div>
+        </Container>
     );
 };
 
@@ -273,23 +274,32 @@ function CamperProfileView() {
     const authContext = useContext(AuthContext);
     // const navigate = useNavigate();
 
-    const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
+    const { data: camperProfile, isPending: isPendingCamperProfile, isError: isErrorCamperProfile } = useCamperProfileQuery(authContext.attributes.sub);
 
     const {
         data: rotarianReview,
+        isPending: isPendingRotarianReview,
+        isError: isErrorRotarianReview
     } = useRotarianReviewQuery(camperProfile?.userSub);
 
-    // useEffect(() => {
-    //     if (camperProfile?.profileComplete && !camperProfile?.applicationComplete && !rotarianReview?.review) {
-    //         navigate('/camper/application');
-    //     }
-    //     else if (camperProfile?.applicationComplete && !rotarianReview?.review) {
-    //         navigate('/camper/rotary-club-review');
-    //     }
-    //     else if (rotarianReview?.review === "APPROVED") {
-    //         navigate('/camper/important-documents');
-    //     }
-    // }, [camperProfile, rotarianReview]);
+    const navigate = useNavigate();
+
+    const isPending = isPendingCamperProfile || isPendingRotarianReview;
+    const isError = isErrorCamperProfile || isErrorRotarianReview;
+
+    useEffect(() => {
+        if(camperProfile && !isPending && !isError) {
+            if (rotarianReview?.review === "APPROVED") {
+                navigate('/camper/important-documents');
+            }
+            else if(camperProfile.applicationComplete && !rotarianReview?.review) {
+                navigate('/camper/rotary-club-review');
+            }
+            else if(camperProfile.profileComplete) {
+                navigate('/camper/application');
+            }
+        }
+    }, [isPendingCamperProfile, isPendingRotarianReview]);
 
     return (
         <div>
@@ -300,7 +310,7 @@ function CamperProfileView() {
                     <Route path="/profile" element={<CamperProfile />} />
                     <Route path="/application" element={
                         <ProtectedRoute
-                            hasAccess={camperProfile?.profileComplete}
+                            hasAccess={isPendingCamperProfile || camperProfile?.profileComplete}
                             fallbackPath="/camper/profile"
                         >
                             <CamperApplicationView />
@@ -308,7 +318,7 @@ function CamperProfileView() {
                     } />
                     <Route path="/rotary-club-review" element={
                         <ProtectedRoute
-                            hasAccess={camperProfile?.applicationComplete || rotarianReview?.review === "APPROVED"}
+                            hasAccess={isPendingCamperProfile || camperProfile?.applicationComplete || rotarianReview?.review === "APPROVED"}
                             fallbackPath="/camper/application"
                         >
                             <CamperRotaryClubReview />

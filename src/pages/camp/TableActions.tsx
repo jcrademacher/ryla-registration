@@ -527,7 +527,7 @@ function ChangeApplicationStatusModal({
                         >
                             <option value="" disabled>Choose...</option>
                             <option value="approve">Approve</option>
-                            <option value="reject">Reject</option>
+                            <option value="reject">Mark Incomplete</option>
                         </Form.Select>
                     </Form.Group>
                     <p>Are you sure you want to do this?</p>

@@ -275,17 +275,16 @@ export function useListRotaryClubsQuery() {
     });
 }
 
-export function useRecommendationQuery(camperUserSub?: string | null) {
+export function useRecommendationsQuery(camperUserSub?: string | null) {
     const { data: camperProfile } = useCamperProfileQuery(camperUserSub);
 
     return useQuery({
-        queryKey: ["recommendation", camperUserSub],
-        queryFn: async () => {
+        queryKey: ["recommendations", camperUserSub],
+        queryFn: () => {
             if(!camperProfile) {
                 throw new Error("Camper user sub is required");
             }
-            const recs = await getRecommendations(camperProfile);
-            return recs?.length && recs.length > 0 ? recs[0] : null;
+            return getRecommendations(camperProfile); 
         },
         enabled: !!camperProfile,
     });

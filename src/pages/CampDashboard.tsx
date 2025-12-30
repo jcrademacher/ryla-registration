@@ -13,7 +13,9 @@ import { useListCampsQuery } from '../queries/adminQueries';
 import { useQueryClient } from '@tanstack/react-query';
 import { createEDT, formatCampDates } from '../utils/datetime';
 import { DateTime } from 'luxon';
-
+import { useActiveCampQuery } from '../queries/queries';
+import { emitToast, ToastType } from '../utils/notifications';
+import { Container } from 'react-bootstrap';
 
 
 // Add Camp Card Component
@@ -22,11 +24,25 @@ interface AddCampCardProps {
 }
 
 const AddCampCard: React.FC<AddCampCardProps> = ({ onClick }) => {
+    const { data: activeCamp, isPending: isPendingActiveCamp, isError: isErrorActiveCamp } = useActiveCampQuery();
+
+    const handleAddCamp = () => {
+        if(!activeCamp && !isPendingActiveCamp && !isErrorActiveCamp) {
+            onClick();
+        }
+        else if(activeCamp && !isPendingActiveCamp && !isErrorActiveCamp) {
+            emitToast("You cannot create a new camp while an existing one is currently accepting applications", ToastType.Error);
+        }
+        else {
+            emitToast("Please wait... loading camp information", ToastType.Warning);
+        }
+    }
+
     return (
         <IconButton
             variant="primary"
             icon={faPlus}
-            onClick={onClick}
+            onClick={handleAddCamp}
         >
             Add Camp
         </IconButton>
@@ -195,7 +211,7 @@ export const CampDashboard: React.FC = () => {
     };
 
     return (
-        <div className="camp-dashboard">
+        <Container className="camp-dashboard">
             <h3>Camp Dashboard</h3>
             <p>Manage RYLA camps by year and view camp statistics.</p>
 
@@ -379,6 +395,6 @@ export const CampDashboard: React.FC = () => {
 
             {/* Add Camp Modal would go here */}
             {/* TODO: Implement modal for adding new camp years */}
-        </div>
+        </Container>
     );
 }; 

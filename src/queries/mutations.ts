@@ -20,8 +20,10 @@ import { setUserGroup, deleteUser } from "../api/auth.ts";
 import { deleteRotarianProfile } from "../api/apiRotarianProfile.ts";
 import { createRotarianReview, deleteRotarianReview, getRotarianReview, RotarianReviewDecision, updateRotarianReview } from "../api/apiRotarianReview.ts";
 import { createRecommendation, updateRecommendation, UpdateRecommendationSchemaType, uploadRecommendationUnauthenticated } from "../api/apiRecommendations.ts";
-import { sendRecommendationLinkEmail } from "../api/apiEmail.ts";
+import { sendEmailToClubReps, sendRecommendationLinkEmail } from "../api/apiEmail.ts";
 import { CreateGroupRequestSchemaType, createGroupRequest } from "../api/apiGroupRequest.ts";
+import { DateTime } from "luxon";
+import { getCamperProfile } from "../api/apiCamperProfile.ts";
 
 
 export function useUpdateProfileMutation() {
@@ -29,6 +31,44 @@ export function useUpdateProfileMutation() {
         mutationKey: ['updateProfile'],
         mutationFn: (data: UpdateCamperProfileSchemaType) => {
             return updateCamperProfile(data);
+        }
+    });
+}
+
+export function useSubmitApplicationMutation() {
+    return useMutation({
+        mutationKey: ['submitApplication'],
+        mutationFn: async ({ userSub }: { userSub: string }) => {
+            const profile = await getCamperProfile(userSub);
+
+            if(!profile) {
+                throw new Error("Camper profile not found. Cannot submit application.");
+            }
+
+            const retval = await updateCamperProfile({
+                userSub: userSub,
+                applicationComplete: true,
+                applicationSubmittedAt: profile.applicationSubmittedAt ?? DateTime.now().toISO()
+            });
+
+            // only email if if it is the first time the application is being submitted
+            if(!profile.applicationComplete && profile.rotaryClubId) {
+                const cat = `${window.location.origin}/rotarian`;
+
+                const body = `
+                    <p>A new application to RYLA has been submitted through your club:</p>
+                    <ul>
+                        <li><b>Name:</b> ${profile.firstName} ${profile.lastName}</li>
+                        <li><b>High School:</b> ${profile.highSchool}</li>
+                        <li><b>Email:</b> ${profile.email}</li>
+                    </ul>
+                    <p>Please visit <a href="${cat}">${cat}</a> to review more details about the application and make a decision.</p>
+                `;
+
+                sendEmailToClubReps("New RYLA Application", body, profile.rotaryClubId);
+            }
+
+            return retval;
         }
     });
 }

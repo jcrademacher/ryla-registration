@@ -9,6 +9,8 @@ import { getUser } from "../functions/get-user/resource";
 import { sendEmail } from "../functions/send-email/resource";
 import { generateCamperPdf } from "../functions/generate-camper-pdf/resource";
 import { sendEmailToAdmins } from "../functions/send-email-to-admins/resource";
+import { admitCamper } from "../functions/admit-camper/resource";
+import { sendEmailToClubReps } from "../functions/send-email-to-club-reps/resource";
 // import { generateInviteCode } from "../functions/generate-invite-code/resource";
 // import { selectUserRole } from "../functions/select-user-role/resource";
 
@@ -218,6 +220,7 @@ const schema = a.schema({
         camperUserSub: a.id().required(),
         camper: a.belongsTo('CamperProfile', 'camperUserSub'),
         review: a.ref('RotarianReviewDecision'),
+        // notifiedOn: a.datetime().authorization((allow) => [allow.group("ADMINS")])
     })
         .identifier(['camperUserSub'])
         .authorization((allow) => [
@@ -318,6 +321,18 @@ const schema = a.schema({
         .authorization((allow) => [allow.authenticated()])
         .handler(a.handler.function(sendEmailToAdmins))
         .returns(a.json()),
+
+    sendEmailToClubReps: a
+        .mutation()
+        .arguments({
+            subject: a.string().required(),
+            body: a.string().required(),
+            replyTo: a.string(),
+            rotaryClubId: a.id().required(),
+        })
+        .authorization((allow) => [allow.authenticated()])
+        .handler(a.handler.function(sendEmailToClubReps))
+        .returns(a.json()),
         
     generateCamperPdf: a
         .query()
@@ -354,6 +369,8 @@ const schema = a.schema({
     //     .returns(a.json())
 }).authorization((allow) => [
     allow.resource(generateCamperPdf).to(["query"]),
+    allow.resource(admitCamper).to(["query"]),
+    allow.resource(sendEmailToClubReps).to(["query"]),
 ]);
 
 export type Schema = ClientSchema<typeof schema>;

@@ -21,6 +21,17 @@ export async function sendEmailToAdmins(subject: string, body: string, replyTo?:
     return JSON.parse(retval.data as string ?? "{}");
 }
 
+export async function sendEmailToClubReps(subject: string, body: string, rotaryClubId: string, replyTo?: string, ) {
+    const retval = await client.mutations.sendEmailToClubReps({
+        subject,
+        body,
+        replyTo,
+        rotaryClubId
+    }, { authMode: "userPool" });
+    checkErrors(retval.errors);
+    return JSON.parse(retval.data as string ?? "{}");
+}
+
 export async function sendRecommendationLinkEmail(recId: string, to: string, name: string) {
     // generate url
     const url = `${window.location.origin}/submit-recommendation?id=${recId}`;

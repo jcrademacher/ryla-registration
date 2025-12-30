@@ -22,6 +22,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { RotaryClubManagementPage } from "./pages/RotaryClubManagementPage";
 import { SubmitRecommendationPage } from "./pages/SubmitRecommendationPage";
 import { HelpPage } from "./pages/HelpPage";
+import { CampInfoPage } from "./pages/CampInfoPage";
 
 function App() {
     return (
@@ -94,6 +95,11 @@ function AuthView({ signOut, user }: AuthViewProps) {
 
                             {/* Profile route - accessible to all authenticated users */}
                             <Route path="/profile" element={<ProfilePage />} />
+
+                            {/* Camp information route - accessible to all authenticated users */}
+                            <Route path="/camp-info" element={<CampInfoPage />} />
+
+                            
 
                             {/* Admin routes - only accessible to admin users */}
                             <Route

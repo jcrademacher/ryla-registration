@@ -20,11 +20,13 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { emitToast, ToastType } from '../utils/notifications';
 import { useCreateRotaryClubMutation, useUpdateRotaryClubMutation } from '../queries/adminMutations';
 import { useQueryClient } from '@tanstack/react-query';
+import { Container } from 'react-bootstrap';
 
 type RotaryClubFormType = {
     name: string;
     requiresApplication: boolean;
-    requiresLetterOfRecommendation: boolean;
+    requiresInterview: boolean;
+    numRequiredLetters: number;
 };
 
 export const RotaryClubManagementPage: React.FC = () => {
@@ -42,7 +44,7 @@ export const RotaryClubManagementPage: React.FC = () => {
         defaultValues: {
             name: '',
             requiresApplication: false,
-            requiresLetterOfRecommendation: false
+            numRequiredLetters: 0,
         }
     });
 
@@ -61,8 +63,12 @@ export const RotaryClubManagementPage: React.FC = () => {
                 </span>
             ),
         }),
-        columnHelper.accessor('requiresLetterOfRecommendation', {
-            header: 'Requires Letter of Recommendation',
+        columnHelper.accessor('numRequiredLetters', {
+            header: 'Required Number of Letters',
+            cell: (info) => (info.getValue() ? info.getValue() : 0),
+        }),
+        columnHelper.accessor('requiresInterview', {
+            header: 'Requires Interview',
             cell: (info) => (
                 <span className={`badge ${info.getValue() ? 'bg-success' : 'bg-danger'}`}>
                     {info.getValue() ? 'Yes' : 'No'}
@@ -107,7 +113,7 @@ export const RotaryClubManagementPage: React.FC = () => {
         form.reset({
             name: club.name || '',
             requiresApplication: club.requiresApplication || false,
-            requiresLetterOfRecommendation: club.requiresLetterOfRecommendation || false
+            numRequiredLetters: club.numRequiredLetters || 0,
         });
         setShowClubModal(true);
     };
@@ -117,7 +123,7 @@ export const RotaryClubManagementPage: React.FC = () => {
         form.reset({
             name: '',
             requiresApplication: false,
-            requiresLetterOfRecommendation: false
+            numRequiredLetters: 0,
         });
         setShowClubModal(true);
     };
@@ -170,29 +176,29 @@ export const RotaryClubManagementPage: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="rotary-club-management">
+            <Container className="rotary-club-management">
                 <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
                     <div className="text-center">
                         <Spinner animation="border" role="status" />
                         <p className="mt-2">Loading rotary clubs...</p>
                     </div>
                 </div>
-            </div>
+            </Container>
         );
     }
 
     if (error) {
         return (
-            <div className="rotary-club-management">
+            <Container className="rotary-club-management">
                 <Alert variant="danger">
                     Error loading rotary clubs: {error.message}
                 </Alert>
-            </div>
+            </Container>
         );
     }
 
     return (
-        <div className="rotary-club-management">
+        <Container className="rotary-club-management">
             <div className="d-flex justify-content-between align-items-center">
                 <div>
                     <h3>Rotary Club Management</h3>
@@ -277,24 +283,45 @@ export const RotaryClubManagementPage: React.FC = () => {
                         </Form.Group>
 
                         <Form.Group className="mb-3">
-                            <Form.Check
-                                type="checkbox"
-                                label="Requires Application"
-                                {...form.register("requiresApplication")}
+                            <Form.Label>Required Number of Letters *</Form.Label>
+                            <Form.Control
+                                type="number"
+                                {...form.register("numRequiredLetters", {
+                                    required: "Please input the number of letters this club requires",
+                                    min: {
+                                        value: 0,
+                                        message: "Please input a number of at least 0"
+                                    },
+                                    max: {
+                                        value: 5,
+                                        message: "Please input a number of at most 5"
+                                    }
+                                })}
                             />
                             <Form.Text className="text-muted">
-                                Check this if campers from this club need to submit an application
+                                Enter the number of letters of recommendation this club requires students to submit.
                             </Form.Text>
                         </Form.Group>
 
                         <Form.Group className="mb-3">
                             <Form.Check
                                 type="checkbox"
-                                label="Requires Letter of Recommendation"
-                                {...form.register("requiresLetterOfRecommendation")}
+                                label="Requires Application"
+                                {...form.register("requiresApplication")}
                             />
                             <Form.Text className="text-muted">
-                                Check this if campers from this club need a letter of recommendation
+                                Check this if campers from this club need to submit an application essay
+                            </Form.Text>
+                        </Form.Group>
+
+                        <Form.Group className="mb-3">
+                            <Form.Check
+                                type="checkbox"
+                                label="Requires Interview"
+                                {...form.register("requiresInterview")}
+                            />
+                            <Form.Text className="text-muted">
+                                Check this if campers from this club must be interviewed by club representatives
                             </Form.Text>
                         </Form.Group>
                     </Modal.Body>
@@ -323,6 +350,6 @@ export const RotaryClubManagementPage: React.FC = () => {
                     </Modal.Footer>
                 </Form>
             </FormModal>
-        </div >
+        </Container >
     );
 };

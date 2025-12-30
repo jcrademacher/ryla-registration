@@ -1,18 +1,18 @@
-import { useContext, useMemo, useState } from "react";
+import { useContext, useMemo } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
-import { Button, Form, Row, Spinner } from "react-bootstrap";
+import { Form, Placeholder, Row } from "react-bootstrap";
 import { ThinSpacer } from "../../components/ThinSpacer";
 import { SpinnerButton } from "../../utils/button";
-import { useUpdateProfileMutation, useUploadCamperApplicationMutation } from "../../queries/mutations";
+import { useSubmitApplicationMutation, useUploadCamperApplicationMutation } from "../../queries/mutations";
 import { emitToast, ToastType } from "../../utils/notifications";
 import { AuthContext } from "../../App";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { useCamperProfileQuery, useCamperYearQuery, useRecommendationQuery, useRotaryClubQuery } from "../../queries/queries";
+import { useCamperProfileQuery, useCamperYearQuery, useRecommendationsQuery, useRotaryClubQuery } from "../../queries/queries";
 import { TransferProgressEvent } from "aws-amplify/storage";
 import { Alert } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faCircleExclamation, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCircleExclamation, faTriangleExclamation, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { Req } from "./CamperProfile";
 import { createFromISO, formatDateFullWithTime } from "../../utils/datetime";
 import { FileInputGroup } from "../../components/forms";
@@ -27,14 +27,13 @@ import { formatDateFull } from "../../utils/datetime";
 export function CamperApplicationView() {
 
     // const { data: camperProfile, isSuccess, isLoading } = useCamperProfileQuery(authContext.attributes.sub);
-    const [saving, setSaving] = useState(false);
 
     const authContext = useContext(AuthContext);
-    const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
-    const { data: camperYear } = useCamperYearQuery();
+    const { data: camperProfile, isPending: isPendingCamperProfile, isError: isErrorCamperProfile } = useCamperProfileQuery(authContext.attributes.sub);
+    const { data: camperYear, isPending: isPendingCamperYear, isError: isErrorCamperYear } = useCamperYearQuery();
 
-    const { data: rotaryClub, isPending: isRotaryClubPending, isError: isRotaryClubError } = useRotaryClubQuery(camperProfile?.rotaryClubId);
-    const updateCamperProfileMutation = useUpdateProfileMutation();
+    const { data: rotaryClub, isPending: isPendingRotaryClub, isError: isErrorRotaryClub } = useRotaryClubQuery(camperProfile?.rotaryClubId);
+    const { mutate: submitCamperApplication, isPending: isSubmittingCamperApplication } = useSubmitApplicationMutation();
 
     const startDate = useMemo(() => createFromISO(camperYear?.startDate ?? ""), [camperYear?.startDate]);
     const endDate = useMemo(() => createFromISO(camperYear?.endDate ?? ""), [camperYear?.endDate]);
@@ -44,9 +43,12 @@ export function CamperApplicationView() {
     const applicationDeadline = useMemo(() => createFromISO(camperYear?.applicationDeadline ?? ""), [camperYear?.applicationDeadline]);
     const appDeadlinePassed = useMemo(() => applicationDeadline.diffNow().toMillis() < 0, [applicationDeadline]);
 
-    const { data: rec } = useRecommendationQuery(authContext.attributes.sub);
+    const { data: recs } = useRecommendationsQuery(authContext.attributes.sub);
 
     const applicationFilename = getFilepathFilename(camperProfile?.applicationFilepath);
+
+    const isPending = isPendingCamperProfile || isPendingCamperYear || isPendingRotaryClub;
+    const isError = isErrorCamperProfile || isErrorCamperYear || isErrorRotaryClub;
 
     const medformDateTimeStr = useMemo(() => {
         if (medicalFormDeadline.isValid) {
@@ -65,28 +67,37 @@ export function CamperApplicationView() {
 
     const onSubmit: SubmitHandler<any> = async () => {
         console.log("submitting application");
-        setSaving(true);
         const submissionDate = DateTime.now().toISO();
 
         console.log("submissionDate", submissionDate);
 
         if(appDeadlinePassed) {
-            emitToast("Application deadline has passed", ToastType.Error);
-            setSaving(false);
+            emitToast(`Application deadline has passed. You may not modify your application materials after this date. 
+                However, you can still update your profile and documents.`, ToastType.Error);
             return;
         }
 
-        updateCamperProfileMutation.mutate({
-            userSub: authContext.attributes.sub ?? "",
-            applicationComplete: true,
-            applicationSubmittedAt: camperProfile?.applicationSubmittedAt ?? submissionDate
-        }, {
+        if(isErrorRotaryClub || isPendingRotaryClub) {
+            emitToast("Error loading rotary club details. Please try again later.", ToastType.Error);
+            return;
+        }
+
+        if((recs && recs.length < (rotaryClub?.numRequiredLetters ?? 0))) {
+            emitToast("Missing recommendations. Please send links to at least " + (rotaryClub?.numRequiredLetters ?? 0) + " recommenders.", ToastType.Error);
+            return;
+        }
+
+        if(!applicationFilename && !!rotaryClub?.requiresApplication) {
+            emitToast("Missing application. Please upload an application.", ToastType.Error);
+            return;
+        }
+
+        submitCamperApplication({ userSub: authContext.attributes.sub ?? "" }, {
             onSuccess: () => {
                 
                 emitToast("Application submitted", ToastType.Success);
             },
             onSettled: () => {
-                setSaving(false);
                 queryClient.invalidateQueries({ queryKey: ['camperProfile', authContext.attributes.sub] });
                 setTimeout(() => {
                     navigate('/camper/rotary-club-review');
@@ -98,12 +109,43 @@ export function CamperApplicationView() {
         });
     }
 
-    if (isRotaryClubPending) {
-        return <Spinner animation="border" />;
+    if (isPending) {
+        return (
+            <div>
+                <Placeholder as="h5" animation="glow">
+                    <Placeholder xs={4} />
+                </Placeholder>
+                <Placeholder as="div" animation="glow">
+                    <Placeholder xs={12} className="mb-2" />
+                    <Placeholder xs={10} className="mb-2" />
+                    <Placeholder xs={8} className="mb-2" />
+                </Placeholder>
+                <Placeholder as="h5" animation="glow" className="mt-3">
+                    <Placeholder xs={5} />
+                </Placeholder>
+                <Placeholder as="div" animation="glow">
+                    <Placeholder xs={11} className="mb-2" />
+                    <Placeholder xs={6} className="mb-2" />
+                </Placeholder>
+                <Placeholder as="h5" animation="glow" className="mt-3">
+                    <Placeholder xs={7} />
+                </Placeholder>
+                <Placeholder as="div" animation="glow">
+                    <Placeholder xs={12} className="mb-2" />
+                    <Placeholder xs={8} className="mb-2" />
+                    <Placeholder xs={4} className="mb-2" />
+                </Placeholder>
+            </div>
+        );
     }
 
-    if (isRotaryClubError) {
-        return <Alert variant="danger">Error loading details for your rotary club. Please try again later.</Alert>;
+    if (isError) {
+        return (
+            <Alert variant="danger">
+                <FontAwesomeIcon icon={faTriangleExclamation} className="me-1" />
+                <b>Error:</b> Failed to load application details. Please try again later.
+            </Alert>
+        );
     }
 
     return (
@@ -113,7 +155,7 @@ export function CamperApplicationView() {
             <ThinSpacer />
             <ApplicationGroup />
 
-            <h5>Letter of Recommendation</h5>
+            <h5>Letters of Recommendation</h5>
             <ThinSpacer />
             <RecommendationGroup />
 
@@ -204,6 +246,32 @@ export function CamperApplicationView() {
                             <th>Parent 2 Phone</th>
                             <td>{camperProfile?.parent2Phone }</td>
                         </tr>
+                        <br/>
+                        <tr>
+                            <th>Emergency Contact Name</th>
+                            <td>{camperProfile?.emergencyContactName || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Emergency Contact Phone</th>
+                            <td>{camperProfile?.emergencyContactPhone || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Emergency Contact Relationship</th>
+                            <td>{camperProfile?.emergencyContactRelationship || ''}</td>
+                        </tr>
+                        <br/>
+                        <tr>
+                            <th>Guidance Counselor Name</th>
+                            <td>{camperProfile?.guidanceCounselorName || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Guidance Counselor Email</th>
+                            <td>{camperProfile?.guidanceCounselorEmail || ''}</td>
+                        </tr>
+                        <tr>
+                            <th>Guidance Counselor Phone</th>
+                            <td>{camperProfile?.guidanceCounselorPhone || ''}</td>
+                        </tr>
                         <tr>
                             <td colSpan={2}>
                                 <hr/>
@@ -219,19 +287,7 @@ export function CamperApplicationView() {
                             <td>{camperProfile?.dietaryRestrictionsNotes || ''}</td>
                         </tr>
                         <tr>
-                            <th>Emergency Contact Name</th>
-                            <td>{camperProfile?.emergencyContactName || ''}</td>
-                        </tr>
-                        <tr>
-                            <th>Emergency Contact Phone</th>
-                            <td>{camperProfile?.emergencyContactPhone || ''}</td>
-                        </tr>
-                        <tr>
-                            <th>Emergency Contact Relationship</th>
-                            <td>{camperProfile?.emergencyContactRelationship || ''}</td>
-                        </tr>
-                        <tr>
-                            <th>Shirt Size</th>
+                            <th>T-Shirt Size</th>
                             <td>{camperProfile?.tshirtSize || ''}</td>
                         </tr>
                     </tbody>
@@ -353,13 +409,7 @@ export function CamperApplicationView() {
                 <ThinSpacer />
                 <SpinnerButton
                     type="submit"
-                    loading={saving}
-                    disabled={ 
-                        isRotaryClubPending 
-                        || appDeadlinePassed
-                        || isRotaryClubError 
-                        || (!rec && !!rotaryClub?.requiresLetterOfRecommendation)
-                        || (!applicationFilename && !!rotaryClub?.requiresApplication)}
+                    loading={isSubmittingCamperApplication}
                 >
                     Submit Application
                 </SpinnerButton>
@@ -422,155 +472,205 @@ type RecommendationFormData = {
     recommenderEmailAddress: string;
 }
 
+const RecommendationSlot = ({ 
+    index, 
+    recommendation, 
+    camperName 
+}: { 
+    index: number;
+    recommendation: any | undefined;
+    camperName: string;
+}) => {
+    const { mutate: createRecommendation, isPending: isCreatePending } = useCreateRecommendationMutation();
+    const { mutate: updateRecommendation, isPending: isUpdatePending } = useUpdateRecommendationMutation();
+    const { mutate: resendRecommendationLink, isPending: isResendPending } = useResendRecommendationLinkMutation();
+    const queryClient = useQueryClient();
+    const authContext = useContext(AuthContext);
+
+    const form = useForm<RecommendationFormData>({
+        values: {
+            recommenderEmailAddress: recommendation?.emailAddress ?? ""
+        }
+    });
+
+    const onSubmit: SubmitHandler<RecommendationFormData> = async (data) => {
+        if (recommendation) {
+            // Update existing recommendation
+            updateRecommendation({
+                rec: {
+                    id: recommendation.id,
+                    emailAddress: data.recommenderEmailAddress,
+                },
+                name: camperName,
+                oldPath: recommendation.filepath
+            }, {
+                onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ['recommendations', authContext.attributes.sub] });
+                    emitToast("Recommendation email updated and link sent", ToastType.Success);
+                }
+            });
+        } else {
+            // Create new recommendation
+            createRecommendation({
+                camperUserSub: authContext.attributes.sub,
+                emailAddress: data.recommenderEmailAddress,
+                name: camperName
+            }, {
+                onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ['recommendations', authContext.attributes.sub] });
+                    emitToast("Recommendation link sent", ToastType.Success);
+                }
+            });
+        }
+    };
+
+    const handleResend = () => {
+        if (recommendation) {
+            resendRecommendationLink({
+                recId: recommendation.id,
+                emailAddress: recommendation.emailAddress,
+                name: camperName
+            }, {
+                onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ['recommendations', authContext.attributes.sub] });
+                    emitToast("Recommendation link resent", ToastType.Success);
+                }
+            });
+        }
+    };
+
+    const linkSent = !!recommendation;
+    const letterReceived = !!recommendation?.filepath;
+    const hasEmail = !!form.watch("recommenderEmailAddress");
+    const emailChanged = recommendation && form.watch("recommenderEmailAddress") !== recommendation.emailAddress;
+    const isPending = isCreatePending || isUpdatePending || isResendPending;
+
+    return (
+        <div className="mb-3" style={{ marginLeft: '2rem' }}>
+            <div className="d-flex align-items-center gap-2">
+                <div>
+                    <div style={{ minWidth: '70px', fontSize: '0.9rem', fontWeight: 500 }}>
+                        Letter {index + 1}
+                    </div>
+                    {linkSent && (
+                        <div style={{ fontSize: '0.75rem', color: letterReceived ? '#28a745' : '#6c757d' }}>
+                            {letterReceived ? (
+                                <>
+                                    <FontAwesomeIcon icon={faCheck} />
+                                    <span className="ms-1">Received</span>
+                                </>
+                            ) : (
+                                <>
+                                    <FontAwesomeIcon icon={faXmark} />
+                                    <span className="ms-1">Pending</span>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+                <Form onSubmit={form.handleSubmit(onSubmit)} className="flex-grow-1">
+                    <InputGroup size="sm">
+                        <Form.Control
+                            type="email"
+                            placeholder="Enter recommender's email address"
+                            isInvalid={!!form.formState.errors.recommenderEmailAddress}
+                            {...form.register("recommenderEmailAddress", {
+                                pattern: EMAIL_REGEX,
+                                required: false
+                            })}
+                        />
+                        {hasEmail && (
+                            <>
+                                {!recommendation || emailChanged ? (
+                                    <SpinnerButton
+                                        type="submit"
+                                        variant="primary"
+                                        size="sm"
+                                        loading={isPending}
+                                    >
+                                        {recommendation ? 'Update & Resend' : 'Send Link'}
+                                    </SpinnerButton>
+                                ) : (
+                                    <SpinnerButton
+                                        variant="outline-primary"
+                                        size="sm"
+                                        loading={isPending}
+                                        onClick={handleResend}
+                                    >
+                                        Resend Link
+                                    </SpinnerButton>
+                                )}
+                            </>
+                        )}
+                        <Form.Control.Feedback type="invalid">
+                            Please enter a valid email address.
+                        </Form.Control.Feedback>
+                    </InputGroup>
+                </Form>
+                <span className={`badge ${linkSent ? 'bg-success' : 'bg-danger'}`} style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}>
+                    {linkSent ? (
+                        <>
+                            <FontAwesomeIcon icon={faCheck} className="me-1" />
+                            Link Sent
+                        </>
+                    ) : (
+                        <>
+                            <FontAwesomeIcon icon={faXmark} className="me-1" />
+                            Not Sent
+                        </>
+                    )}
+                </span>
+            </div>
+        </div>
+    );
+};
+
 function RecommendationGroup() {
     const authContext = useContext(AuthContext);
     const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
     const { data: rotaryClub, isPending: isRotaryClubPending, isError: isRotaryClubError } = useRotaryClubQuery(camperProfile?.rotaryClubId);
-    const { data: primaryRecommendation, isPending: isRecPending, isError: isRecError } = useRecommendationQuery(authContext.attributes.sub);
+    const { data: recommendations, isPending: isRecPending, isError: isRecError } = useRecommendationsQuery(authContext.attributes.sub);
 
-    const { mutate: createRecommendation, isPending: isCreateRecommendationPending } = useCreateRecommendationMutation();
-    const { mutate: updateRecommendation, isPending: isUpdateRecommendationPending } = useUpdateRecommendationMutation();
-    const { mutate: resendRecommendationLink, isPending: isResendRecommendationLinkPending } = useResendRecommendationLinkMutation();
-
-    const [changingEmail, setChangingEmail] = useState(false);
-
-    const queryClient = useQueryClient();
-
-    const recommendationForm = useForm<RecommendationFormData>({
-        values: {
-            recommenderEmailAddress: primaryRecommendation?.emailAddress ?? ""
-        }
-    });
-
-    const onRecommendationSubmit: SubmitHandler<RecommendationFormData> = async (data) => {
-        if (!isRecError && !primaryRecommendation) {
-            createRecommendation({
-                camperUserSub: authContext.attributes.sub,
-                emailAddress: data.recommenderEmailAddress,
-                name: getCamperName(camperProfile)
-            }, {
-                onSuccess: () => {
-                    queryClient.invalidateQueries({ queryKey: ['recommendation', authContext.attributes.sub] });
-                    emitToast("Recommendation link sent", ToastType.Success);
-                },
-                onSettled: () => setChangingEmail(false)
-            });
-        }
-        else if (primaryRecommendation) {
-            updateRecommendation({
-                rec: {
-                    id: primaryRecommendation.id,
-                    emailAddress: data.recommenderEmailAddress,
-                },
-                name: getCamperName(camperProfile),
-                oldPath: primaryRecommendation.filepath
-            }, {
-                onSuccess: () => {
-                    queryClient.invalidateQueries({ queryKey: ['recommendation', authContext.attributes.sub] });
-                    emitToast("Recommendation email updated", ToastType.Success);
-                },
-                onSettled: () => setChangingEmail(false)
-            });
-        }
-    }
+    const numRequired = rotaryClub?.numRequiredLetters ?? 0;
+    const camperName = getCamperName(camperProfile);
 
     if (isRecPending || isRotaryClubPending) {
-        return <Spinner animation="border" />;
+        return (
+            <div className="mb-1">
+                <Placeholder as="h5" animation="glow">
+                    <Placeholder xs={4} />
+                </Placeholder>
+                <Placeholder as="div" animation="glow">
+                    <Placeholder xs={12} className="mb-2" />
+                </Placeholder>
+            </div>
+        );
     }
-    else if (rotaryClub?.requiresLetterOfRecommendation && !isRotaryClubError && !isRecError) {
-        if (primaryRecommendation && !changingEmail) {
-            return <div>
-                <p>A link to upload the letter has already been provided to {primaryRecommendation.emailAddress}</p>
-                <p>Status: {primaryRecommendation.filepath ? 
-                    <span className="text-success">
-                        <FontAwesomeIcon icon={faCheck} className="me-1" />
-                        Submitted
-                    </span> : 
-                    <span className="text-danger">
-                        <FontAwesomeIcon icon={faXmark} className="me-1" />
-                        Missing
-                    </span>}</p>
-                <div className="d-flex gap-2">
-                    <SpinnerButton
-                        variant="primary"
-                        loading={isResendRecommendationLinkPending || isUpdateRecommendationPending}
-                        onClick={() => {
-                            resendRecommendationLink({
-                                recId: primaryRecommendation.id,
-                                emailAddress: primaryRecommendation.emailAddress,
-                                name: getCamperName(camperProfile)
-                            },
-                                {
-                                    onSuccess: () => {
-                                        queryClient.invalidateQueries({ queryKey: ['recommendations', authContext.attributes.sub] });
-                                        emitToast("Recommendation link resent", ToastType.Success);
-                                    }
-                                }
-                            );
-                        }}
-                    >
-                        Resend Link
-                    </SpinnerButton>
-                    <Button variant="light"
-                        onClick={() => setChangingEmail(true)}
-                        disabled={isResendRecommendationLinkPending}
-                    >
-                        Change Email
-                    </Button>
-                </div>
-                <br />
-            </div>;
-        }
-        else {
+    else if (numRequired > 0 && !isRotaryClubError && !isRecError) {
+        // Create slots for all required letters
+        const slots = Array.from({ length: numRequired }, (_, index) => {
+            const rec = recommendations?.[index];
             return (
-                <>
-                    <p>
-                        Your rotary club requires a letter of recommendation.
-                        Please provide the email address of a recommender who will receive an email with a link to submit their letter.
-                    </p>
-                    <Form onSubmit={recommendationForm.handleSubmit(onRecommendationSubmit)}>
+                <RecommendationSlot
+                    key={rec?.id || `empty-${index}`}
+                    index={index}
+                    recommendation={rec}
+                    camperName={camperName}
+                />
+            );
+        });
 
-                        <InputGroup>
-                            <Form.Control
-                                type="email"
-                                placeholder="Enter an email address"
-                                isInvalid={!!recommendationForm.formState.errors.recommenderEmailAddress}
-                                {...recommendationForm.register("recommenderEmailAddress", {
-                                    pattern: EMAIL_REGEX,
-                                    required: true
-                                })}
-                            />
-
-                            <SpinnerButton
-                                type="submit"
-                                variant="primary"
-                                loading={isCreateRecommendationPending || isUpdateRecommendationPending}
-                                disabled={recommendationForm.watch("recommenderEmailAddress") === primaryRecommendation?.emailAddress}
-                            >
-                                {changingEmail ? 'Update' : 'Send Link'}
-                            </SpinnerButton>
-                            {changingEmail && (
-                                <Button
-                                    variant="danger"
-                                    disabled={isUpdateRecommendationPending}
-                                    onClick={() => setChangingEmail(false)}
-                                >
-                                    Cancel
-                                </Button>
-                            )}
-                            <Form.Control.Feedback type="invalid">
-                                Please enter a valid email address.
-                            </Form.Control.Feedback>
-                        </InputGroup>
-
-                    </Form>
-                    <br />
-                </>
-            )
-        }
+        return (
+            <>
+                <p>
+                    Your rotary club requires {numRequired} letter{numRequired > 1 ? 's' : ''} of recommendation. 
+                    Enter email {numRequired > 1 ? 'addresses' : 'address'} below to send links to each recommender to submit their letters.
+                </p>
+                {slots}
+            </>
+        );
     }
     else if (isRotaryClubError || isRecError) {
-
         return <Alert variant="danger">Error loading recommendation details. Please try again later.</Alert>;
     }
     else {

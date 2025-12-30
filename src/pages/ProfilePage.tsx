@@ -3,6 +3,7 @@ import { emitToast, ToastType } from '../utils/notifications';
 import { ThinSpacer } from '../components/ThinSpacer';
 import { AuthContext } from '../App';
 import { AccountSettings } from '@aws-amplify/ui-react';
+import { Container } from 'react-bootstrap';
 
 export const ProfilePage: React.FC = () => {
     // const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,7 +45,7 @@ export const ProfilePage: React.FC = () => {
     // };
 
     return (
-        <div className="side-pad-20">
+        <Container>
             
                     <h4>User Profile</h4>
                     <ThinSpacer />
@@ -149,7 +150,7 @@ export const ProfilePage: React.FC = () => {
                             </div>
                         </Form> */}
             </div>
-        </div>
+        </Container>
     );
 };
 

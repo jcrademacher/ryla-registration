@@ -1,11 +1,10 @@
-import { Table, Button, Placeholder, Badge, Dropdown, Form, Spinner, Modal, Alert } from "react-bootstrap";
-import { useActiveCampQuery, useListRotaryClubsQuery, useRecommendationQuery, useRotarianProfileQuery, useRotarianReviewQuery } from "../queries/queries";
+import { Table, Button, Placeholder, Badge, Dropdown, Form, Spinner, Modal, Alert, Row, Col } from "react-bootstrap";
+import { useActiveCampQuery, useListRotaryClubsQuery, useRecommendationsQuery, useRotarianProfileQuery, useRotarianReviewQuery } from "../queries/queries";
 import { useCamperProfilesQuery } from "../queries/adminQueries";
 import { useCreateRotarianReviewMutation, useUpdateProfileMutation, useUpdateRotarianReviewMutation } from "../queries/mutations";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "../App";
 import { Route, Routes, useNavigate } from "react-router";
-import { RotarianProfileSchemaType } from "../api/apiRotarianProfile";
 import { ConfirmationModal, FormModal } from "../components/modals";
 import { useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
@@ -19,11 +18,14 @@ import { useForm } from "react-hook-form";
 import { SpinnerButton } from "../utils/button";
 import { getCamperName } from "../utils/fields";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
-import { createEDT, formatCampDates, formatDateFullWithTime, getCampYear } from "../utils/datetime";
+import { createEDT } from "../utils/datetime";
 import "../styles/rotarian-page.scss";
 import { getCampApplicationStatus } from '../utils/camp';
 import { NotAcceptingApplications, PreDeadline, PastDeadlineRotarian } from "../components/alerts";
 import { useObserveCamperProfiles } from "../queries/subscriptions";
+import { Link } from "react-router";
+import { formatCampDates, formatDateFullWithTime } from "../utils/datetime";
+import { Container } from "react-bootstrap";
 
 const columnHelper = createColumnHelper<CamperProfileSchemaType>();
 
@@ -32,17 +34,13 @@ const columnHelper = createColumnHelper<CamperProfileSchemaType>();
 //     rotaryClubId: string | null;
 // }
 
-function ClubView({ rotarianProfile }: { rotarianProfile?: RotarianProfileSchemaType | null }) {
+function ClubView() {
+    const authContext = useContext(AuthContext);
+    const { data: rotarianProfile, isPending: isPendingRotarianProfile, isError: isErrorRotarianProfile } = useRotarianProfileQuery(authContext.attributes.sub);
     const { data: rotaryClub, isPending: isPendingRotaryClub, isError: isErrorRotaryClub } = useRotaryClubQuery(rotarianProfile?.rotaryClubId);
-    const { data: activeCamp, isPending: isPendingActiveCamp, isError: isErrorActiveCamp } = useActiveCampQuery();
 
-    const isPending = isPendingRotaryClub || isPendingActiveCamp;
-    const isError = isErrorRotaryClub || isErrorActiveCamp;
-
-    const applicationDeadline = useMemo(() => {
-        const d = createEDT(activeCamp?.applicationDeadline ?? "");
-        return formatDateFullWithTime(d);
-    }, [activeCamp?.applicationDeadline]);
+    const isPending = isPendingRotaryClub || isPendingRotarianProfile;
+    const isError = isErrorRotaryClub || isErrorRotarianProfile;
 
     if (isError) {
         return (
@@ -62,113 +60,86 @@ function ClubView({ rotarianProfile }: { rotarianProfile?: RotarianProfileSchema
     }
 
     return (
-        <Table id="rotarian-info-table">
-            <tbody>
-                <tr>
-                    <td><b>Your club: </b></td>
-                    <td>
-                        {rotaryClub?.name}
-                        <OverlayTrigger
-                            placement="right"
-                            overlay={
-                                <Tooltip>
-                                    Please contact {import.meta.env.VITE_APP_DIRECTOR_EMAIL} if you need to change your club.
-                                </Tooltip>
-                            }
-                        >
-                            <FontAwesomeIcon className="ms-1 text-muted" icon={faQuestionCircle} />
-                        </OverlayTrigger>
-                    </td>
-                </tr>
 
-                <tr>
-                    <td><b>Camp:</b></td>
-                    <td>
-                        <div>
-                            {activeCamp ? `RYLA ${getCampYear(activeCamp)}, ${formatCampDates(activeCamp)}` : "None upcoming"}
-                        </div>
-                        <div>
-                            {activeCamp && <small className="text-muted">Applications are due by {applicationDeadline}</small>}
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </Table>
+        <div>
+            <div>
+                <b>{rotaryClub?.name}</b>
+                <OverlayTrigger
+                    placement="right"
+                    overlay={
+                        <Tooltip>
+                            Please contact {import.meta.env.VITE_APP_DIRECTOR_EMAIL} if you need to change your club.
+                        </Tooltip>
+                    }
+                >
+                    <FontAwesomeIcon className="ms-1 text-muted" icon={faQuestionCircle} />
+                </OverlayTrigger>
+            </div>
+            <small className="text-muted">
+                <div>
+                    <div><b>Requires Application Essay: </b>{rotaryClub?.requiresApplication ? "Yes" : "No"}</div>
+                    <div><b>Number of Letters Required: </b>{rotaryClub?.numRequiredLetters ?? "None"}</div>
+                    <div><b>Requires Interview: </b>{rotaryClub?.requiresInterview ? "Yes" : "No"}</div>
+                </div>
+            </small>
+        </div>
     )
-    // const [changingClub, setChangingClub] = useState(false);
-    // const [savingClub, setSavingClub] = useState(false);
+}
 
-    // const { mutateAsync: updateRotarianProfile } = useUpdateRotarianProfileMutation();
-    // const queryClient = useQueryClient();
-    // const { data: rotaryClub, isPending: isPendingRotaryClub } = useRotaryClubQuery(rotarianProfile?.rotaryClubId);
+function CampView() {
+    const { data: activeCamp, isPending: isPendingActiveCamp, isError: isErrorActiveCamp } = useActiveCampQuery();
 
-    // const authContext = useContext(AuthContext);
+    if(isPendingActiveCamp) {
+        return (
+            <Placeholder animation="glow">
+                <Placeholder xs={7} />
+            </Placeholder>
+        );
+    }
 
-    // const {
-    //     register,
-    //     handleSubmit,
-    //     formState: { errors }
-    // } = useForm<ClubFormType>({
-    //     values: {
-    //         rotaryClubId: rotarianProfile?.rotaryClubId ?? null
-    //     }
-    // });
+    else if(isErrorActiveCamp) {
+        return (
+            <Alert variant="danger">
+                <FontAwesomeIcon icon={faTriangleExclamation} className="me-1" />
+                <b>Error:</b> Failed to load camp information. Please try again later.
+            </Alert>
+        );
+    }
 
-    // const handleChangeClub: SubmitHandler<ClubFormType> = async (data: ClubFormType) => {
-    //     if (changingClub) {
-    //         setSavingClub(true);
-    //         await updateRotarianProfile({
-    //             userSub: rotarianProfile?.userSub ?? "",
-    //             rotaryClubId: data.rotaryClubId
-    //         }, {
-    //             onSuccess: () => {
-    //                 queryClient.invalidateQueries({ queryKey: ["rotarianProfile", authContext.attributes.sub] });
-    //             }
-    //         });
+    else if(!activeCamp && !isPendingActiveCamp && !isErrorActiveCamp) {
+        return (
+            <div>
+                <small className="text-muted">Camp Information</small>
+                <div>
+                    <b>None Upcoming</b>
+                </div>
+            </div>
+        )
+    }
 
-    //         setSavingClub(false);
-    //     }
-
-    //     setChangingClub(false);
-    // }
-
-    // return (
-    //     <p>
-    //         <b>Your club:</b>
-    //         {' '}{rotaryClub?.name ?? <Placeholder animation="glow"><Placeholder xs={1} /></Placeholder>}
-    //         {' '}(<Link to="" onClick={() => setChangingClub(true)}>Change</Link>)
-    //         <FormModal
-    //             show={changingClub}
-    //             onClose={() => setChangingClub(false)}
-    //             title="Change Club"
-    //         >
-    //             <Form onSubmit={handleSubmit(handleChangeClub)}>
-    //                 <Modal.Body>
-    //                     <Form.Group>
-    //                         <Form.Label>Club</Form.Label>
-    //                         <Form.Select
-    //                             {...register("rotaryClubId", { required: true })}
-    //                             isInvalid={!!errors.rotaryClubId}
-    //                         >
-    //                             <option disabled value="">Select a club</option>
-    //                             {rotaryClubs?.map((club) => (
-    //                                 <option key={club.id} value={club.id}>{club.name}</option>
-    //                             ))}
-    //                         </Form.Select>
-    //                     </Form.Group>
-    //                 </Modal.Body>
-    //                 <Modal.Footer>
-    //                     <Button variant="light" onClick={() => setChangingClub(false)}>Cancel</Button>
-    //                     <SpinnerButton loading={savingClub} variant="primary" type="submit">Save</SpinnerButton>
-    //                 </Modal.Footer>
-    //             </Form>
-    //         </FormModal>
-    //     </p>
-    // )
+    return (
+        <div>
+            <div>
+                <b>{activeCamp?.name}</b>
+            </div>
+            <small className="text-muted">
+                <div><b>Dates:</b> {formatCampDates(activeCamp)}</div>
+                {activeCamp?.applicationDeadline && (
+                    <div><b>Application Deadline:</b> {formatDateFullWithTime(createEDT(activeCamp.applicationDeadline))}</div>
+                )}
+                {activeCamp?.medicalFormDeadline && (
+                    <div><b>Medical Form Deadline:</b> {formatDateFullWithTime(createEDT(activeCamp.medicalFormDeadline))}</div>
+                )}
+            </small>
+            <small className="text-muted">
+                <Link to="/camp-info">View Full Camp Information</Link>
+            </small>
+        </div>
+    );
 }
 
 function ApplicationStatusCell({ camperProfile }: { camperProfile: CamperProfileSchemaType }) {
-    const { data: rec, isPending: isPendingRec } = useRecommendationQuery(camperProfile.userSub);
+    const { data: recs, isPending: isPendingRec } = useRecommendationsQuery(camperProfile.userSub);
     const { data: rotaryClub, isPending: isPendingRotaryClub } = useRotaryClubQuery(camperProfile.rotaryClubId);
 
     if (camperProfile.applicationComplete && camperProfile.profileComplete) {
@@ -179,8 +150,8 @@ function ApplicationStatusCell({ camperProfile }: { camperProfile: CamperProfile
                 </Placeholder>
             );
         }
-        if (!rec?.filepath && rotaryClub?.requiresLetterOfRecommendation) {
-            return <Badge bg="warning" text="dark">Missing Recommendation</Badge>;
+        if ((rotaryClub?.numRequiredLetters ?? 0) > 0 && recs?.every((rec) => !rec?.filepath)) {
+            return <Badge bg="warning" text="dark">Missing Recommendations</Badge>;
         }
         if (!camperProfile.applicationFilepath && rotaryClub?.requiresApplication) {
             return <Badge bg="warning" text="dark">Missing Application File</Badge>;
@@ -218,6 +189,7 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
     const { mutate: createRotarianReview, isPending: isPendingCreateRotarianReview } = useCreateRotarianReviewMutation();
     const { mutate: updateRotarianReview, isPending: isPendingUpdateRotarianReview } = useUpdateRotarianReviewMutation();
     const { mutate: sendAdmissionEmail } = useSendAdmissionEmailMutation();
+    const navigate = useNavigate();
 
     const [showReviewModal, setShowReviewModal] = useState<"APPROVED" | "REJECTED" | "UNDO" | null>(null);
     const [showSendToClubModal, setShowSendToClubModal] = useState(false);
@@ -275,6 +247,16 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            navigate(`/camper-view/${camperProfile.userSub}`);
+                        }}
+                    >
+                        View Details...
+                    </Dropdown.Item>
+                    <Dropdown.Divider />
+                    <Dropdown.Item
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setShowReviewModal("APPROVED");
                         }}
                         disabled={rotarianReview?.review === "APPROVED"}
@@ -318,7 +300,7 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
                 show={showReviewModal !== null}
                 onClose={() => setShowReviewModal(null)}
                 onConfirm={() => showReviewModal && handleReview(showReviewModal === "UNDO" ? null : showReviewModal)}
-                title={showReviewModal === "APPROVED" ? "Admit Camper" : "Reject Camper"}
+                title={showReviewModal === "APPROVED" ? "Admit Camper" : showReviewModal === "REJECTED" ? "Reject Camper" : "Undo Decision"}
                 confirmButtonText={showReviewModal === "UNDO" ? "Undo" : showReviewModal === "APPROVED" ? "Admit" : "Reject"}
                 confirmButtonVariant={showReviewModal !== "REJECTED" ? "primary" : "danger"}
                 isLoading={isPendingCreateRotarianReview || isPendingUpdateRotarianReview}
@@ -326,7 +308,7 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
                 {showReviewModal === "UNDO" ?
                     (
                         <p>
-                            Are you sure you want to undo the decision for this camper?
+                            Are you sure you want to undo the decision for this camper? This will change the camper's review status to incomplete.
                         </p>
                     )
                     : (
@@ -432,17 +414,28 @@ function SendToClubModal({ camperProfile, show, onClose }: { camperProfile: Camp
 
 
 function RotarianCamperTablePage() {
-    const authContext = useContext(AuthContext);
-
-    const { data: rotarianProfile } = useRotarianProfileQuery(authContext.attributes.sub);
-
     return (
-        <div>
+        <Container>
             <h3>Rotarian Portal</h3>
-            <p>Welcome to the rotarian portal. Here you can view camper applications and approve or reject them.</p>
-            <ClubView rotarianProfile={rotarianProfile} />
+            <div className="mb-1">Welcome to the rotarian portal. Here you can view camper applications and approve or reject them.</div>
+            
+            <Row className="mb-3">
+                <Col xs={12} md={6} className="mb-2 mb-md-0">
+                    <div style={{ borderLeft: "1px solid #dee2e6", paddingLeft: "10px" }}>
+                        <small className="text-muted">Your Club</small>
+                        <ClubView />
+                    </div>
+                </Col>
+                <Col xs={12} md={6}>
+                    <div style={{ borderLeft: "1px solid #dee2e6", paddingLeft: "10px" }}>
+                        <small className="text-muted">Camp Information</small>
+                        <CampView />
+                    </div>
+                </Col>
+            </Row>
+            
             <RotarianTable />
-        </div>
+        </Container>
     );
 }
 
@@ -453,16 +446,16 @@ function RotarianTable() {
     const { data: activeCamp, isPending: isPendingActiveCamp, isError: isErrorActiveCamp } = useActiveCampQuery();
 
     const { data: camperProfiles, isPending: isPendingCamperProfiles, isError: isErrorCamperProfiles } = useCamperProfilesQuery(activeCamp?.id, rotarianProfile?.rotaryClubId);
-    
+
     const queryClient = useQueryClient();
-    
+
 
     useEffect(() => {
         const sub = useObserveCamperProfiles(queryClient, activeCamp?.id, rotarianProfile?.rotaryClubId);
 
         return () => sub.unsubscribe();
-    }, [queryClient,activeCamp?.id, rotarianProfile?.rotaryClubId]);
-    
+    }, [queryClient, activeCamp?.id, rotarianProfile?.rotaryClubId]);
+
     const isPending = isPendingActiveCamp || isPendingCamperProfiles;
     const isError = isErrorActiveCamp || isErrorCamperProfiles;
 
@@ -569,10 +562,10 @@ function RotarianTable() {
     let DeadlineStatus;
 
     if (applicationStatus === "accepting") {
-        DeadlineStatus = <PreDeadline deadline={applicationDeadline}/>;
+        DeadlineStatus = <PreDeadline deadline={applicationDeadline} />;
     }
     else {
-        DeadlineStatus = <PastDeadlineRotarian/>;
+        DeadlineStatus = <PastDeadlineRotarian />;
     }
 
     return (

@@ -1,7 +1,7 @@
 
 import { useSearchParams } from "react-router";
 import { useRecommendationUnauthenticatedQuery } from "../queries/queries";
-import { Alert, Form, Spinner } from "react-bootstrap";
+import { Alert, Container, Form, Spinner } from "react-bootstrap";
 import { ThinSpacer } from "../components/ThinSpacer";
 import { useForm } from "react-hook-form";
 import { EMAIL_REGEX } from "./constants";
@@ -55,7 +55,7 @@ export function SubmitRecommendationPage() {
     }
 
     return (
-        <div className="side-pad-20">
+        <Container>
             <h4>Submit Recommendation</h4>
             <ThinSpacer />
             <Form>
@@ -86,6 +86,6 @@ export function SubmitRecommendationPage() {
                     )}
                 </>
             )}
-        </div>
+        </Container>
     )
 }

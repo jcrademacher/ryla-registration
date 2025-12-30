@@ -21,6 +21,7 @@ export const storage = defineStorage({
 
     'templates/*': [
       allow.groups(['ADMINS']).to(['read', 'write', 'delete']),
+      allow.groups(['ROTARIANS']).to(['read']),
       allow.authenticated.to(['read']),
     ],
     'camper-packages/*': [

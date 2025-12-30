@@ -5,7 +5,7 @@ import { useDocumentTemplatesByCampQuery } from "../../queries/queries";
 import { UpdateCampSchemaType } from '../../api/apiCamp';
 import { DocumentTemplateSchemaType, getUrlToDocument } from '../../api/apiDocuments';
 import { useUpdateCampMutation, useUploadDocumentTemplateMutation } from "../../queries/adminMutations";
-import { Form, Button, Row as BsRow, Col, Table, Placeholder } from "react-bootstrap";
+import { Form, Button, Row as BsRow, Col, Table, Placeholder, Container } from "react-bootstrap";
 import { createEDT, formatDateHTML } from "../../utils/datetime";
 import { DateTime } from "luxon";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -186,7 +186,7 @@ export const CampSettings = () => {
             },
             onSuccess: (data) => {
                 queryClient.invalidateQueries({ queryKey: ['camp', data?.id] });
-                emitToast('Camp settings updated successfully', ToastType.Success);
+                emitToast('Camp settings updated', ToastType.Success);
             }
         });
     }
@@ -226,7 +226,7 @@ export const CampSettings = () => {
     }
 
     return (
-        <div className="side-pad-20">
+        <Container>
             <h3>{camp?.name ? camp.name : `RYLA ${createEDT(camp?.startDate ?? "").year}`} Settings</h3>
             <ThinSpacer />
 
@@ -396,7 +396,7 @@ export const CampSettings = () => {
             >
                 Save
             </SpinnerButton>
-        </div >
+        </Container>
     )
 }
 

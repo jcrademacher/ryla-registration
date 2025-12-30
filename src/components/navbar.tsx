@@ -9,7 +9,6 @@ import { useListGroupRequestsQuery } from '../queries/queries';
 
 interface NavBarProps {
     signOut?: UseAuthenticator["signOut"] | undefined;
-    children?: React.ReactNode;
     title?: string;
     isAdmin?: boolean;
 }
@@ -131,7 +130,7 @@ export function NavOffcanvas({ show }: { show: boolean }) {
     )
 }
 
-export function NavBar({ isAdmin = false, signOut, title, children }: NavBarProps) {
+export function NavBar({ isAdmin = false, signOut, title }: NavBarProps) {
     const navigate = useNavigate();
 
     return (
@@ -140,7 +139,7 @@ export function NavBar({ isAdmin = false, signOut, title, children }: NavBarProp
             <span style={{ cursor: 'pointer' }} onClick={() => { navigate('/') }}>
                 <b>{title}</b>
             </span>
-            {children}
+
             <NavRight>
                 {signOut && (
                     <>

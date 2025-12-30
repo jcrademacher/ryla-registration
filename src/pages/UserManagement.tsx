@@ -19,6 +19,7 @@ import { GroupRequestSchemaType } from '../api/apiGroupRequest';
 import { createFromISO } from '../utils/datetime';
 import { emitToast, ToastType } from '../utils/notifications';
 import { faXmark } from '@fortawesome/free-solid-svg-icons';
+import { Container } from 'react-bootstrap';
 
 type ChangeGroupFormType = {
     groupName: string | null;
@@ -318,31 +319,31 @@ export function UserManagement() {
 
     if (isLoading) {
         return (
-            <div className="user-management">
+            <Container className="user-management">
                 <h3>User Management</h3>
                 <div className="text-center mt-4">
-                    <Spinner animation="border" role="status" />
+                    <Spinner animation="border" role="status" />    
                     <p className="mt-2">Loading users...</p>
                 </div>
-            </div>
+            </Container>
         );
     }
 
     if (error) {
         return (
-            <div className="user-management">
+            <Container className="user-management">
                 <h3>User Management</h3>
                 <Alert variant="danger" className="mt-3">
                     Error loading users: {error.message}
                 </Alert>
-            </div>
+            </Container>
         );
     }
 
     if (isSuccess) {
 
         return (
-            <div className="user-management">
+            <Container className="user-management">
                 <h3>User Management</h3>
                 <p>Manage user accounts, roles, and permissions.</p>
 
@@ -461,7 +462,7 @@ export function UserManagement() {
                         </Form>
                     </FormModal>
                 )}
-            </div>
+            </Container>
         );
     }
 }

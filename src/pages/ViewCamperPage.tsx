@@ -3,11 +3,11 @@ import {
     useCamperProfileQuery,
     useRotarianReviewQuery, useGetUserEmailQuery, useUrlToDocumentQuery, useRotaryClubQuery, useDocumentTemplatesByCampQuery,
     useCamperDocumentQuery,
-    useRecommendationQuery,
+    useRecommendationsQuery,
     useDocumentStatusQuery
 } from "../queries/queries";
 import { formatPhoneNumber, getCamperAddress, getCamperBirthdate, getCamperName, getFilepathFilename } from "../utils/fields";
-import { Table, OverlayTrigger, Tooltip, Spinner } from "react-bootstrap";
+import { Table, OverlayTrigger, Tooltip, Container } from "react-bootstrap";
 import { ThinSpacer } from "../components/ThinSpacer";
 import { PlaceholderElement } from "../components/PlaceholderElement";
 import { useMemo } from "react";
@@ -76,6 +76,17 @@ const FileDisplay = ({ camperUserSub, template }: { camperUserSub?: string | nul
     )
 }
 
+const RecommendationDisplay = ({ filepath }: { filepath?: string | null }) => {
+    const { data: url } = useUrlToDocumentQuery(filepath);
+    const filename = useMemo(() => getFilepathFilename(filepath), [filepath]);
+
+    if (!filename) {
+        return <div className="text-danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Missing</div>;
+    }
+
+    return <div><a target="_blank" href={url}>{filename}</a></div>;
+}
+
 export function ViewCamperPage() {
     const { camperSub } = useParams();
 
@@ -95,20 +106,43 @@ export function ViewCamperPage() {
 
     const appFilename = useMemo(() => getFilepathFilename(camperProfile?.applicationFilepath), [camperProfile?.applicationFilepath]);
 
-    const { data: rec, isPending: isPendingRec } = useRecommendationQuery(camperSub);
-    const recFilename = useMemo(() => getFilepathFilename(rec?.filepath), [rec?.filepath]);
-
-    const { data: urlToRec } = useUrlToDocumentQuery(rec?.filepath);
+    const { data: recs, isPending: isPendingRec } = useRecommendationsQuery(camperSub);
 
     if(isPendingCamperProfile) {
-        return <div>
-            <Spinner animation="border" />
-            <h4>Loading camper...</h4>
-        </div>
+        return (
+            <Container>
+                <PlaceholderElement props={{ xs: 4, as: "h3" }} isLoading={true}>
+                    <h3></h3>
+                </PlaceholderElement>
+                <ThinSpacer />
+                <PlaceholderElement props={{ xs: 8 }} isLoading={true}>
+                    <span></span>
+                </PlaceholderElement>
+                <br />
+                <PlaceholderElement props={{ xs: 6 }} isLoading={true}>
+                    <span></span>
+                </PlaceholderElement>
+                <PlaceholderElement props={{ xs: 8 }} isLoading={true}>
+                    <span></span>
+                </PlaceholderElement>
+                <br />
+                <PlaceholderElement props={{ xs: 6 }} isLoading={true}>
+                    <span></span>
+                </PlaceholderElement>
+                <br /><br />
+                <PlaceholderElement props={{ xs: 8 }} isLoading={true}>
+                    <span></span>
+                </PlaceholderElement>
+                <br />
+                <PlaceholderElement props={{ xs: 6 }} isLoading={true}>
+                    <span></span>
+                </PlaceholderElement>
+            </Container>
+        );
     }
 
     return (
-        <div>
+        <Container>
             <div className="d-flex align-items-center justify-content-between">
                 <h3>
                     {getCamperName(camperProfile)} {camperProfile?.highSchool ? `(${camperProfile?.highSchool})` : ''}
@@ -159,6 +193,11 @@ export function ViewCamperPage() {
                 <tbody>
                     <tr><td colSpan={2}>
                         <h5>Application Files</h5>
+                        {/* <small className="text-muted">
+                            Club requires {rotaryClub?.requiresApplication ? "an application essay" : "no application essay"},&nbsp; 
+                            {((rotaryClub?.numRequiredLetters ?? 0) > 0) ? (rotaryClub?.numRequiredLetters ?? 0) + " letters of recommendation" : "no letters of recommendation"},
+                            and {rotaryClub?.requiresInterview ? "an interview" : "no interview"}.
+                        </small> */}
                         <ThinSpacer />
                     </td></tr>
                     <tr>
@@ -172,17 +211,36 @@ export function ViewCamperPage() {
                             </PlaceholderElement>
                         </td>
                     </tr>
-                    <tr>
-                        <td><b>Letter of Recommendation ({rotaryClub?.requiresLetterOfRecommendation ? "Required" : "Optional"}):</b></td>
-                        <td>
-                            <PlaceholderElement props={{ xs: 7 }} isLoading={isPendingRec}>
-                                {recFilename ?
-                                    <a target="_blank" href={urlToRec}>{recFilename}</a>
-                                    :
-                                    <div className="text-danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Missing</div>}
-                            </PlaceholderElement>
-                        </td>
-                    </tr>
+                    {isPendingRec ? (
+                        <tr>
+                            <td><b>Letters of Recommendation ({(rotaryClub?.numRequiredLetters ?? 0) > 0 ? "Required" : "Optional"}):</b></td>
+                            <td>
+                                <PlaceholderElement props={{ xs: 7 }} isLoading={true}>
+                                    <div></div>
+                                </PlaceholderElement>
+                            </td>
+                        </tr>
+                    ) : recs && recs.length > 0 ? (
+                        recs.map((rec, index) => {
+                            const letterNumber = index + 1;
+                            const isRequired = letterNumber <= (rotaryClub?.numRequiredLetters ?? 0);
+                            return (
+                                <tr key={rec.id || index}>
+                                    <td><b>Letter {letterNumber} ({isRequired ? "Required" : "Optional"}):</b></td>
+                                    <td>
+                                        <RecommendationDisplay filepath={rec.filepath} />
+                                    </td>
+                                </tr>
+                            );
+                        })
+                    ) : (
+                        <tr>
+                            <td><b>Letters of Recommendation ({(rotaryClub?.numRequiredLetters ?? 0) > 0 ? "Required" : "Optional"}):</b></td>
+                            <td>
+                                <div className="text-danger"><FontAwesomeIcon icon={faXmark} className="me-1" />Missing</div>
+                            </td>
+                        </tr>
+                    )}
 
                     <tr><td colSpan={2}>
                         <br/>
@@ -327,6 +385,6 @@ export function ViewCamperPage() {
 
                 </tbody>
             </Table>
-        </div>
+        </Container>
     )
 }
