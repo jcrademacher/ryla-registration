@@ -11,10 +11,12 @@ export const storage = defineStorage({
       allow.groups(['ADMINS']).to(['read', 'write', 'delete']),
       allow.entity('identity').to(['read', 'write', 'delete']),
       allow.groups(['ROTARIANS']).to(['read']),
+      allow.groups(['COORDINATORS']).to(['read']),
     ],
     'camper-recommendations/*': [
       allow.groups(['ADMINS']).to(['read', 'write', 'delete']),
       allow.groups(['ROTARIANS']).to(['read']),
+      allow.groups(['COORDINATORS']).to(['read']),
       allow.authenticated.to(['read', 'write', 'delete']),
       allow.guest.to(['read', 'write']),
     ],
@@ -22,12 +24,14 @@ export const storage = defineStorage({
     'templates/*': [
       allow.groups(['ADMINS']).to(['read', 'write', 'delete']),
       allow.groups(['ROTARIANS']).to(['read']),
+      allow.groups(['COORDINATORS']).to(['read']),
       allow.authenticated.to(['read']),
     ],
     'camper-packages/*': [
       allow.resource(generateCamperPdf).to(['read', 'write', 'delete']),
       allow.groups(['ADMINS']).to(['read']),
-      allow.groups(['ROTARIANS']).to(['read'])
+      allow.groups(['ROTARIANS']).to(['read']),
+      allow.groups(['COORDINATORS']).to(['read']),
     ]
   })
 });

@@ -88,7 +88,7 @@ function ClubView() {
 function CampView() {
     const { data: activeCamp, isPending: isPendingActiveCamp, isError: isErrorActiveCamp } = useActiveCampQuery();
 
-    if(isPendingActiveCamp) {
+    if (isPendingActiveCamp) {
         return (
             <Placeholder animation="glow">
                 <Placeholder xs={7} />
@@ -96,7 +96,7 @@ function CampView() {
         );
     }
 
-    else if(isErrorActiveCamp) {
+    else if (isErrorActiveCamp) {
         return (
             <Alert variant="danger">
                 <FontAwesomeIcon icon={faTriangleExclamation} className="me-1" />
@@ -105,7 +105,7 @@ function CampView() {
         );
     }
 
-    else if(!activeCamp && !isPendingActiveCamp && !isErrorActiveCamp) {
+    else if (!activeCamp && !isPendingActiveCamp && !isErrorActiveCamp) {
         return (
             <div>
                 <small className="text-muted">Camp Information</small>
@@ -194,6 +194,9 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
 
     const queryClient = useQueryClient();
 
+    const authContext = useContext(AuthContext);
+    const isCoordinator = authContext.groups.includes('COORDINATORS');
+
     const handleReview = (review: "APPROVED" | "REJECTED" | null) => {
         if (!rotarianReview && !isErrorRotarianReview) {
             if (review === null) {
@@ -246,47 +249,53 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
                     >
                         View Details...
                     </Dropdown.Item>
-                    <Dropdown.Divider />
-                    <Dropdown.Item
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowReviewModal("APPROVED");
-                        }}
-                        disabled={rotarianReview?.review === "APPROVED"}
-                    >
-                        Admit
-                    </Dropdown.Item>
-                    <Dropdown.Item
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowReviewModal("REJECTED");
-                        }}
-                        disabled={rotarianReview?.review === "REJECTED"}
-                    >
-                        Reject
-                    </Dropdown.Item>
-                    <Dropdown.Item
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowReviewModal("UNDO");
-                        }}
-                        disabled={!rotarianReview || rotarianReview.review === null}
-                    >
-                        Undo decision
-                    </Dropdown.Item>
-                    <Dropdown.Divider />
-                    <Dropdown.Item
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowSendToClubModal(true);
-                        }}
-                    >
-                        Transfer to another club...
-                    </Dropdown.Item>
+                    
+                    {isCoordinator && (
+                        <>
+                            <Dropdown.Divider />
+                            <Dropdown.Item
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowReviewModal("APPROVED");
+                                }}
+                                disabled={rotarianReview?.review === "APPROVED"}
+                            >
+                                Admit
+                            </Dropdown.Item>
+                            <Dropdown.Item
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowReviewModal("REJECTED");
+                                }}
+                                disabled={rotarianReview?.review === "REJECTED"}
+                            >
+                                Reject
+                            </Dropdown.Item>
+                            <Dropdown.Item
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowReviewModal("UNDO");
+                                }}
+                                disabled={!rotarianReview || rotarianReview.review === null}
+                            >
+                                Undo decision
+                            </Dropdown.Item>
+                            <Dropdown.Divider />
+                            <Dropdown.Item
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setShowSendToClubModal(true);
+                                }}
+                            >
+                                Transfer to another club...
+                            </Dropdown.Item>
+                        </>
+                    )}
+
                 </Dropdown.Menu>
             </Dropdown>
 
@@ -412,7 +421,7 @@ function RotarianCamperTablePage() {
         <Container>
             <h3>Rotarian Portal</h3>
             <div className="mb-1">Welcome to the rotarian portal. Here you can view camper applications and approve or reject them.</div>
-            
+
             <Row className="mb-3">
                 <Col xs={12} md={6} className="mb-2 mb-md-0">
                     <div style={{ borderLeft: "1px solid #dee2e6", paddingLeft: "10px" }}>
@@ -427,7 +436,7 @@ function RotarianCamperTablePage() {
                     </div>
                 </Col>
             </Row>
-            
+
             <RotarianTable />
         </Container>
     );

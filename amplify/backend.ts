@@ -7,7 +7,8 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import { listUsers } from "./functions/list-users/resource";
 import { sendEmail } from "./functions/send-email/resource";
 import { sendEmailToAdmins } from "./functions/send-email-to-admins/resource";
-import { sendEmailToClubReps } from "./functions/send-email-to-club-reps/resource"
+import { sendEmailToClubReps } from "./functions/send-email-to-club-reps/resource";
+import { notifyAdmittedCampers } from "./functions/notify-admitted-campers/resource";
 
 const backend = defineBackend({
     auth,
@@ -16,7 +17,8 @@ const backend = defineBackend({
     listUsers,
     sendEmail,
     sendEmailToAdmins,
-    sendEmailToClubReps
+    sendEmailToClubReps,
+    notifyAdmittedCampers
 });
 
 const lambdaFunction = backend.listUsers.resources.lambda;
@@ -49,4 +51,7 @@ sendEmailToAdminsLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
 
 const sendEmailToClubRepsLambdaFunction = backend.sendEmailToClubReps.resources.lambda;
 sendEmailToClubRepsLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
+
+const notifyAdmittedCampersLambdaFunction = backend.notifyAdmittedCampers.resources.lambda;
+notifyAdmittedCampersLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
 

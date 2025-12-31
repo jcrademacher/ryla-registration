@@ -72,10 +72,11 @@ export const getGroupsForUser = async (username: string, userPoolId: string) => 
 }
 
 
-export type AuthGroup = "ADMINS" | "ROTARIANS" | "NEW";
+export type AuthGroup = "ADMINS" | "ROTARIANS" | "COORDINATORS" | "NEW";
 
 export const AUTH_GROUPS: AuthGroup[] = [
     "ADMINS",
     "ROTARIANS",
+    "COORDINATORS",
     "NEW"
 ];

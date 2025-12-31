@@ -17,61 +17,79 @@ export const handler: EventBridgeHandler<"Scheduled Event", null, void> = async 
 	let nextToken: string | null | undefined = null;
 
 	let reviews: Schema['RotarianReview']['type'][] = [];
-	
-	while(!nextToken) {
+
+	do {
 		retval = await client.models.RotarianReview.list({
 			nextToken
 		});
 
-		if(retval.errors) {
+		if (retval.errors) {
 			console.error(retval.errors);
 			// break;
 		}
 
 		nextToken = retval.nextToken;
+		// console.log(nextToken);
 
 		reviews.push(...retval.data);
-	}
+	} while (nextToken !== null);
 
-	for(const review of reviews) {
-		if(review.review === "APPROVED" && !review.camperNotifiedOn) {
+	console.log("Reviews:", reviews);
+
+	// Filter reviews that need notification
+	const reviewsToNotify = reviews.filter(
+		review => review.review === "APPROVED" && !review.camperNotifiedOn
+	);
+
+	console.log(`Found ${reviewsToNotify.length} campers to notify`);
+
+	const cat = `https://registration.ryla7780.org/camper/important-documents`;
+	const body = `
+			<p>Congratulations! Your local rotary club has approved your application to RYLA!</p>
+			<p>Please continue with your registration process at <a href="${cat}">${cat}</a>.</p>
+			<p>There, you will find important documents that you must to complete prior to camp.</p>
+		`;
+
+	// Process all notifications in parallel
+	const results = await Promise.all(
+		reviewsToNotify.map(async (review) => {
+
 			const camper = await review.camper();
 
-			if(camper.errors) {
-				console.error(camper.errors);
-				// break;
+			if (camper.errors) {
+				console.error("Camper fetch errors:", camper.errors);
+				return false;
 			}
 
-			if(!camper.data) {
-				console.error("Camper not found");
-				continue;
+			if (!camper.data) {
+				console.error("Camper not found for review:", review.camperUserSub);
+				return false;
 			}
 
-				// break;
-			const cat = `https://registration.ryla7780.org/camper/important-documents`;
-			const body =
-                `
-                <p>Congratulations! Your local rotary club has approved your application to RYLA!</p>
-                <p>$Please continue with your registration process at <a href="${cat}">${cat}</a>.}</p>
-                <p>There, you will find important documents that you must to complete prior to camp.</p>
-            `;
+			const response = await sendEmail(
+				[camper.data.email, camper.data.parent1Email],
+				`[ACTION REQUIRED] Acceptance to RYLA!`,
+				body
+			);
 
-            const response = await sendEmail([camper.data.email, camper.data.parent1Email], `[ACTION REQUIRED] Acceptance to RYLA!`, body);
-
-			if(response.$metadata.httpStatusCode !== 200) {
-				console.error("Failed to send email to camper: ", response.$metadata);
-				continue;
+			if (response.$metadata.httpStatusCode !== 200) {
+				console.error("Failed to send email to camper:", response.$metadata);
+				return false;
 			}
 
-			const retval = await client.models.RotarianReview.update({
+			const updateResult = await client.models.RotarianReview.update({
 				camperUserSub: review.camperUserSub,
 				camperNotifiedOn: (new Date()).toISOString()
 			});
 
-			if(retval.errors) {
-				console.error(retval.errors);
-				continue;
+			if (updateResult.errors) {
+				console.error("Update errors:", updateResult.errors);
+				return false;
 			}
-		}
-	}
+
+			console.log(`Successfully notified camper: ${camper.data.email}`);
+			return true;
+		})
+	);
+
 }

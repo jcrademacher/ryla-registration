@@ -9,7 +9,7 @@ export type UserProfile = Schema["UserProfile"]["type"];
 export function getUserGroups(session: AuthSession) {
     // console.log("session", session);
     const groups = session?.tokens?.accessToken.payload['cognito:groups'] || [];
-    return JSON.stringify(groups);
+    return JSON.parse(JSON.stringify(groups));
 }
 
 export async function refreshAuthSession(forceRefresh: boolean = false) {
@@ -31,11 +31,16 @@ export function isUserAdmin(groups: string | string[]) {
 }
 
 export function isUserRotarian(groups: string | string[]) {
-    return groups.includes('ROTARIANS');
+    return groups.includes('ROTARIANS') || groups.includes('COORDINATORS');
 }
 
+export function isUserCoordinator(groups: string | string[]) {
+    return groups.includes('COORDINATORS');
+}
+
+
 export function isUserCamper(groups: string | string[]) {
-    return !isUserAdmin(groups) && !isUserRotarian(groups) && !isUserNew(groups);
+    return !isUserAdmin(groups) && !isUserRotarian(groups) && !isUserCoordinator(groups) && !isUserNew(groups);
 }
 
 export async function listAllUsers(): Promise<UserProfile[]> {
@@ -71,7 +76,7 @@ export async function getUser(username: string) {
     }, { authMode: "userPool" });
 
     checkErrors(response.errors);
-    return JSON.parse(response.data as string ?? "{}");
+    return response.data;
 }
 
 export function getUserSubFromAttr(attr: any[]): string | undefined {

@@ -57,7 +57,7 @@ export const auth = defineAuth({
         allow.resource(listUsers).to(["manageUsers"]),
         allow.resource(setUserGroup).to(["addUserToGroup", "removeUserFromGroup"]),
         allow.resource(deleteUser).to(["deleteUser"]),
-        allow.resource(getUser).to(["getUser"]),
+        allow.resource(getUser).to(["manageUsers"]),
         allow.resource(sendEmailToAdmins).to(["listUsersInGroup"]),
     ]
 });

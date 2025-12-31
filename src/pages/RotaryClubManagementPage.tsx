@@ -3,6 +3,7 @@ import { Button, Form, Modal, Alert, Spinner, Table } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faChevronUp, faChevronDown, faEdit } from '@fortawesome/free-solid-svg-icons';
 import { FormModal } from '../components/modals';
+import { Link } from 'react-router';
 import '../styles/admin-page.scss';
 import {
     createColumnHelper,
@@ -53,7 +54,14 @@ export const RotaryClubManagementPage: React.FC = () => {
     const columns = useMemo(() => [
         columnHelper.accessor('name', {
             header: 'Club Name',
-            cell: (info) => info.getValue(),
+            cell: (info) => (
+                <Link 
+                    to={`/admin/rotary-club-details?id=${info.row.original.id}`}
+                    
+                >
+                    {info.getValue()}
+                </Link>
+            ),
         }),
         columnHelper.accessor('requiresApplication', {
             header: 'Requires Application',
@@ -201,8 +209,8 @@ export const RotaryClubManagementPage: React.FC = () => {
         <Container className="rotary-club-management">
             <div className="d-flex justify-content-between align-items-center">
                 <div>
-                    <h3>Rotary Club Management</h3>
-                    <p className="text-muted">Manage rotary clubs and their settings</p>
+                    <h3>Rotary Clubs</h3>
+                    <p>Manage rotary clubs and their settings</p>
                 </div>
                 <div>
                     <Button

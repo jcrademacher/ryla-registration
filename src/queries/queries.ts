@@ -3,7 +3,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { getCamperProfile, getRotarianReviewFromCamperSub, getCamperYearByUserSub} from "../api/apiCamperProfile";
 import { getUser, getUserAttributes, getUserGroups, listAllUsers } from "../api/auth";
 import { getCamperApplicationFilename, getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
-import { getRotarianProfile } from "../api/apiRotarianProfile";
+import { getRotarianProfile, listRotarianProfilesByClub } from "../api/apiRotarianProfile";
 import { listCamperDocuments } from "../api/apiDocuments";
 import { getRotaryClub, listRotaryClubs } from "../api/apiRotaryClub";
 import { getRecommendationUnauthenticated, getRecommendations } from "../api/apiRecommendations";
@@ -129,6 +129,20 @@ export function useRotarianProfileQuery(userSub: string | undefined) {
     });
 }
 
+export function useRotarianProfilesByClubQuery(rotaryClubId?: string | null) {
+    return useQuery({
+        queryKey: ["rotarianProfilesByClub", rotaryClubId],
+        queryFn: () => {
+            if(!rotaryClubId) {
+                throw new Error("Rotary club ID is required");
+            }
+
+            return listRotarianProfilesByClub(rotaryClubId);
+        },
+        enabled: !!rotaryClubId,
+    });
+}
+
 // export function useListCamperProfilesByRotaryClubQuery(rotaryClub: string | null) {
 //     return useQuery({
 //         queryKey: ["camperProfilesByRotaryClub", rotaryClub],
@@ -148,8 +162,8 @@ export function useGetUserEmailQuery(username: string | undefined) {
                 throw new Error("Username is required. Check auth flow.");
             }
             const user = await getUser(username);
-            // console.log("user", user);
-            const userEmail = user.UserAttributes.find((attr: any) => attr.Name === 'email')?.Value;
+            console.log("user", user);
+            const userEmail = user?.email;
 
             if(userEmail) {
                 return userEmail;
@@ -159,6 +173,19 @@ export function useGetUserEmailQuery(username: string | undefined) {
             }
         },
         enabled: !!username,
+    });
+}
+
+export function useGetUserQuery(userSub?: string | null) {
+    return useQuery({
+        queryKey: ["getUser", userSub],
+        queryFn: () => {
+            if(!userSub) {
+                throw new Error("User sub is required");
+            }
+
+            return getUser(userSub);
+        },
     });
 }
 

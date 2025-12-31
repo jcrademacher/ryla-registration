@@ -54,6 +54,7 @@ const CamperProfileModel = {
     emergencyContactRelationship: a.string(),
     rotaryClubId: a.id().authorization((allow) => [
         allow.group("ROTARIANS").to(["read", "update"]),
+        allow.group("COORDINATORS").to(["read", "update"]),
         allow.group("ADMINS"),
         allow.owner()
     ]),
@@ -99,6 +100,7 @@ const schema = a.schema({
         filepath: a.string().authorization((allow) => [
             allow.groups(["ADMINS"]), 
             allow.groups(["ROTARIANS"]).to(["read"]), 
+            allow.groups(["COORDINATORS"]).to(["read"]),
             allow.guest().to(['read','update']),
             allow.owner()
         ]),
@@ -109,6 +111,7 @@ const schema = a.schema({
         allow.owner(),
         allow.group("ADMINS").to(['create', 'read', 'update', 'delete']),
         allow.group("ROTARIANS").to(['read']),
+        allow.group("COORDINATORS").to(['read']),
         allow.guest().to(['read']),
     ]),
 
@@ -130,6 +133,7 @@ const schema = a.schema({
     .authorization((allow) => [
         allow.owner(),
         allow.group("ROTARIANS").to(["read"]),
+        allow.group("COORDINATORS").to(["read"]),
         allow.group("ADMINS").to(["read", "create","update", "delete"]),
 
     ]),
@@ -163,6 +167,7 @@ const schema = a.schema({
         .authorization((allow) => [
             allow.group("ADMINS").to(["create", "read", "update", "delete"]),
             allow.group("ROTARIANS").to(["read"]),
+            allow.group("COORDINATORS").to(["read"]),
             allow.authenticated().to(["read"])
         ]),
 
@@ -223,14 +228,15 @@ const schema = a.schema({
         camperNotifiedOn: a.datetime().authorization((allow) => [
             allow.group("ADMINS"), 
             allow.group("ROTARIANS").to(["read"]),
+            allow.group("COORDINATORS").to(["read"]),
             allow.authenticated().to(["read"])
         ])
     })
         .identifier(['camperUserSub'])
         .authorization((allow) => [
-            allow.owner().to(["create", "read", "update", "delete"]),
-            allow.group("ROTARIANS").to(["create", "read"]),
-            allow.group("ADMINS").to(["create", "read", "update", "delete"]),
+            allow.group("ROTARIANS").to(["read"]),
+            allow.group("COORDINATORS"),
+            allow.group("ADMINS"),
             allow.authenticated().to(["read"])
         ]),
 
@@ -240,6 +246,7 @@ const schema = a.schema({
         .authorization((allow) => [
             allow.owner(),
             allow.group("ROTARIANS").to(["read"]),
+            allow.group("COORDINATORS").to(["read"]),
             allow.group("ADMINS").to(["create", "read", "update", "delete"])
         ]),
 
@@ -299,9 +306,9 @@ const schema = a.schema({
         .arguments({
             username: a.string().required()
         })
-        .authorization((allow) => [allow.group("ADMINS"), allow.group("ROTARIANS")])
+        .authorization((allow) => [allow.group("ADMINS"), allow.group("ROTARIANS"), allow.group("COORDINATORS")])
         .handler(a.handler.function(getUser))
-        .returns(a.json()),
+        .returns(a.ref('UserProfile')),
 
     sendEmail: a
         .mutation()
@@ -343,7 +350,7 @@ const schema = a.schema({
         .arguments({
             camperSub: a.string().required()
         })
-        .authorization((allow) => [allow.group("ADMINS"), allow.group("ROTARIANS")])
+        .authorization((allow) => [allow.group("ADMINS"), allow.group("ROTARIANS"), allow.group("COORDINATORS")])
         .handler(a.handler.function(generateCamperPdf))
         .returns(a.string()),
     // generateInviteCode: a
@@ -373,7 +380,7 @@ const schema = a.schema({
     //     .returns(a.json())
 }).authorization((allow) => [
     allow.resource(generateCamperPdf).to(["query"]),
-    allow.resource(notifyAdmittedCampers).to(["query"]),
+    allow.resource(notifyAdmittedCampers).to(["query", "mutate"]),
     allow.resource(sendEmailToClubReps).to(["query"]),
 ]);
 

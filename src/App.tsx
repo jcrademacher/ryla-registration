@@ -23,6 +23,7 @@ import { RotaryClubManagementPage } from "./pages/RotaryClubManagementPage";
 import { SubmitRecommendationPage } from "./pages/SubmitRecommendationPage";
 import { HelpPage } from "./pages/HelpPage";
 import { CampInfoPage } from "./pages/CampInfoPage";
+import { RotaryClubDetailsPage } from "./pages/RotaryClubDetailsPage";
 
 function App() {
     return (
@@ -111,23 +112,28 @@ function AuthView({ signOut, user }: AuthViewProps) {
                                     </ProtectedRoute>
                                 } /> */}
                                 <Route path="user-management" element={
-                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                    <ProtectedRoute hasAccess={isAdmin}>
                                         <UserManagement />
                                     </ProtectedRoute>
                                 } />
                                 <Route index element={
-                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                    <ProtectedRoute hasAccess={isAdmin}>
                                         <CampDashboard />
                                     </ProtectedRoute>
                                 } />
                                 <Route path="camps/:campId/*" element={
-                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                    <ProtectedRoute hasAccess={isAdmin}>
                                         <CampManagementPage />
                                     </ProtectedRoute>
                                 } />
                                 <Route path="rotary-clubs" element={
-                                    <ProtectedRoute hasAccess={userData.groups.includes('ADMINS')}>
+                                    <ProtectedRoute hasAccess={isAdmin}>
                                         <RotaryClubManagementPage />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="rotary-club-details" element={
+                                    <ProtectedRoute hasAccess={isAdmin}>
+                                        <RotaryClubDetailsPage />
                                     </ProtectedRoute>
                                 } />
                             </Route>
@@ -136,7 +142,7 @@ function AuthView({ signOut, user }: AuthViewProps) {
                             <Route
                                 path="/rotarian/*"
                                 element={
-                                    <ProtectedRoute hasAccess={userData.groups.includes('ROTARIANS')}>
+                                    <ProtectedRoute hasAccess={isRotarian}>
                                         <RotarianPage
 
                                         />
