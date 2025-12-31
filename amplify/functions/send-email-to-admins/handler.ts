@@ -17,7 +17,7 @@ export const handler: Handler = async (event) => {
 
     const adminUsers = await client.send(adminUsersCmd);
 
-    console.log("adminUsers", adminUsers);
+    // console.log("adminUsers", adminUsers);
 
     const adminEmails = 
         adminUsers.Users?.map((user) => user.Attributes?.find((attr) => attr.Name === 'email')?.Value)

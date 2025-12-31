@@ -52,5 +52,5 @@ export const handler: Handler = async (event) => {
     }
 
     // Send email to all rotarians in the club
-    return await sendEmail(rotarianEmails, subject, body, replyTo);
+    return await sendEmail(rotarianEmails, subject, body, replyTo, `Hello ${rotaryClub.name} Rotarians,`);
 }

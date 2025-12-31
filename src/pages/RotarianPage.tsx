@@ -10,7 +10,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { CamperProfileSchemaType } from "../api/apiCamperProfile";
 import { useRotaryClubQuery } from "../queries/queries";
-import { useSendAdmissionEmailMutation } from "../queries/emailMutations";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEllipsisV, faQuestionCircle, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { emitToast, ToastType } from "../utils/notifications";
@@ -188,7 +187,6 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
     const { data: rotarianReview, isError: isErrorRotarianReview } = useRotarianReviewQuery(camperProfile.userSub);
     const { mutate: createRotarianReview, isPending: isPendingCreateRotarianReview } = useCreateRotarianReviewMutation();
     const { mutate: updateRotarianReview, isPending: isPendingUpdateRotarianReview } = useUpdateRotarianReviewMutation();
-    const { mutate: sendAdmissionEmail } = useSendAdmissionEmailMutation();
     const navigate = useNavigate();
 
     const [showReviewModal, setShowReviewModal] = useState<"APPROVED" | "REJECTED" | "UNDO" | null>(null);
@@ -226,10 +224,6 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
         else {
             emitToast("Rotarian review could not be found. Please try again later.", ToastType.Error);
             return;
-        }
-
-        if (review === "APPROVED") {
-            sendAdmissionEmail({ to: [camperProfile.email, camperProfile.parent1Email] });
         }
     }
 

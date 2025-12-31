@@ -64,23 +64,6 @@ export function useReceivedDocumentEmailMutation() {
     });
 }
 
-export function useSendAdmissionEmailMutation() {
-    return useMutation({
-        mutationKey: ['sendAdmissionEmail'],
-        mutationFn: async ({ to }: { to: (string | null | undefined)[] }) => {
-
-            const body =
-                `
-                <p>Congratulations! Your local rotary club has approved your application to RYLA!</p>
-                <p>${CONTINUE_AT_MSG(`${window.location.origin}/camper/important-documents`)}</p>
-                <p>There, you will find important documents that you must to complete prior to camp.</p>
-            `;
-
-            return sendEmail(to, `[ACTION REQUIRED] Acceptance to RYLA!`, body);
-        }
-    });
-}
-
 export function useSendRotarianRequestEmailMutation() {
     return useMutation({
         mutationKey: ['sendRotarianRequestEmail'],

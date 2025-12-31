@@ -1,6 +1,6 @@
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
-export const sendEmail = async (to: (string | null | undefined)[], subject: string, body: string, replyTo?: string | null) => {
+export const sendEmail = async (to: (string | null | undefined)[], subject: string, body: string, replyTo?: string | null, greeting?: string | null) => {
     const sesClient = new SESClient({ region: 'us-east-1' });
     const command = new SendEmailCommand({
         Source: 'RYLA 7780 Registration <registration@ryla7780.org>',
@@ -11,7 +11,7 @@ export const sendEmail = async (to: (string | null | undefined)[], subject: stri
             Subject: { Data: subject },
             Body: {
                 Html: { Data: `
-                <p>Hello ${to.join(', ')},</p>
+                <p>${greeting ?? `Hello ${to.join(', ')},`}</p>
                 <p>
                 ${body}
                 </p>
