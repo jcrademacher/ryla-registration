@@ -286,11 +286,20 @@ const schema = a.schema({
         verified: a.boolean().required(),
     }),
 
+    ListUsersResult: a.customType({
+        items: a.ref('UserProfile').required().array().required(),
+        nextToken: a.string()
+    }),
+
     listUsers: a
         .query()
+        .arguments({
+            limit: a.integer(),
+            nextToken: a.string()
+        })
         .authorization((allow) => [allow.group("ADMINS")])
         .handler(a.handler.function(listUsers))
-        .returns(a.ref('UserProfile').required().array().required()),
+        .returns(a.ref('ListUsersResult')),
 
     deleteUser: a
         .mutation()

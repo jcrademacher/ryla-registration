@@ -5,6 +5,7 @@ import { AuthSession } from "aws-amplify/auth";
 import { Schema } from "../../amplify/data/resource";
 
 export type UserProfile = Schema["UserProfile"]["type"];
+export type ListUsersResult = Schema["ListUsersResult"]["type"];
 
 export function getUserGroups(session: AuthSession) {
     // console.log("session", session);
@@ -43,12 +44,15 @@ export function isUserCamper(groups: string | string[]) {
     return !isUserAdmin(groups) && !isUserRotarian(groups) && !isUserCoordinator(groups) && !isUserNew(groups);
 }
 
-export async function listAllUsers(): Promise<UserProfile[]> {
-    const response = await client.queries.listUsers();
+export async function listAllUsers(limit?: number | null, nextToken?: string | null): Promise<ListUsersResult> {
+    const response = await client.queries.listUsers({
+        limit,
+        nextToken
+    });
 
     checkErrors(response.errors);
 
-    return response.data ?? [];
+    return response.data ?? { items: [], nextToken: undefined };
 }
 
 export async function setUserGroup(userSub: string, group: AuthGroup): Promise<Object> {

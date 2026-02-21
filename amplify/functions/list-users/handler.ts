@@ -8,8 +8,14 @@ type UserProfile = Schema["UserProfile"]["type"];
 const client = new CognitoIdentityProviderClient()
 
 export const handler: Handler = async (event) => {
+
+    const limit = event.arguments.limit ?? 25;
+    const nextToken = event.arguments.nextToken ?? undefined;
+
     const command = new ListUsersCommand({
-        UserPoolId: env.AMPLIFY_AUTH_USERPOOL_ID
+        UserPoolId: env.AMPLIFY_AUTH_USERPOOL_ID,
+        PaginationToken: nextToken,
+        Limit: limit
     });
 
 
@@ -47,5 +53,8 @@ export const handler: Handler = async (event) => {
 
     // Execute all promises in parallel and filter out nulls
     const results = await Promise.all(userPromises);
-    return results.filter((user) => user !== null);
+    return {
+        items: results.filter((user) => user !== null),
+        nextToken: response.PaginationToken ?? undefined
+    };
 }

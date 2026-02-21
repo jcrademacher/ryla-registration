@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { getCamperProfile, getRotarianReviewFromCamperSub, getCamperYearByUserSub} from "../api/apiCamperProfile";
 import { getUser, getUserAttributes, getUserGroups, listAllUsers } from "../api/auth";
@@ -107,11 +107,15 @@ export function useUrlToCamperApplicationQuery(identityId?: string, enabled: boo
     return useUrlToCamperFileQuery(identityId, "camper-application", enabled);
 }
 
-export function useListUsersQuery() {
-    return useQuery({
+export function useListUsersQuery(limit?: number | null, nextToken?: string | null) {
+    return useInfiniteQuery({
         queryKey: ["users"],
-        queryFn: listAllUsers,
-        refetchInterval: 10 * 1000
+        queryFn: ({ pageParam }: { pageParam: string | null }) => {
+            return listAllUsers(limit, pageParam)
+        },
+        initialPageParam: null, 
+        getNextPageParam: (lastPage) => lastPage.nextToken,
+        getPreviousPageParam: (prevPage) => prevPage.nextToken,
     });
 }
 

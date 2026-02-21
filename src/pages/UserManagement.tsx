@@ -1,6 +1,6 @@
-import { useContext, useMemo, useState } from 'react';
-import { Table, Spinner, Alert, Dropdown, Modal, Button, Form, Card } from 'react-bootstrap';
-import { faCheck, faChevronDown, faChevronUp, faEllipsisV, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
+import { useContext, useMemo, useState, useEffect } from 'react';
+import { Table, Spinner, Alert, Dropdown, Modal, Button, Form, Card, Placeholder } from 'react-bootstrap';
+import { faCheck, faChevronDown, faChevronUp, faEllipsisV, faTriangleExclamation, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useListUsersQuery, useListGroupRequestsQuery, useListRotaryClubsQuery } from '../queries/queries';
 import { FormModal } from '../components/modals';
@@ -12,7 +12,7 @@ import { SpinnerButton } from '../utils/button';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { AUTH_GROUPS, AuthGroup } from '../../amplify/auth/utils';
 import { PlaceholderElement } from '../components/PlaceholderElement';
-import { useReactTable, createColumnHelper, getCoreRowModel, flexRender, RowData, getSortedRowModel, SortingState } from '@tanstack/react-table';
+import { useReactTable, createColumnHelper, getCoreRowModel, flexRender, RowData, getSortedRowModel, SortingState, PaginationState, getPaginationRowModel } from '@tanstack/react-table';
 import { DateTime } from 'luxon';
 import { UserProfile } from '../api/auth';
 import { GroupRequestSchemaType } from '../api/apiGroupRequest';
@@ -219,9 +219,34 @@ const columns = [
 ]
 
 export function UserManagement() {
-    const { data: usersData, isLoading, error, isSuccess } = useListUsersQuery();
+    const [sorting, setSorting] = useState<SortingState>([{
+        id: 'createdAt',
+        desc: true,
+    }]);
+
+    const [pagination, setPagination] = useState<PaginationState>({
+        pageIndex: 0,
+        pageSize: 25,
+    });
+
+    const { 
+        data: usersData, 
+        isLoading, 
+        error, 
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage
+    } = useListUsersQuery();
+
     const { data: groupRequestsData } = useListGroupRequestsQuery();
     const queryClient = useQueryClient();
+
+    // Update page tokens when data changes
+    // useEffect(() => {
+    //     if (usersData?.nextToken && !pageTokens[pagination.pageIndex + 1]) {
+    //         setPageTokens([...pageTokens, usersData.nextToken]);
+    //     }
+    // }, [usersData?.nextToken]);
 
     // Modal state - only one set of modals for all users
     const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -295,39 +320,59 @@ export function UserManagement() {
         );
     }
 
-    const [sorting, setSorting] = useState<SortingState>([{
-        id: 'createdAt',
-        desc: true,
-    }]);
-
-    const tableData = useMemo(() => usersData ?? [], [usersData]);
+    const tableData = useMemo(() => usersData?.pages.flatMap((page) => page.items) ?? [], [usersData?.pages]);
 
     const table = useReactTable({
         data: tableData,
         columns: columns,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
         state: {
             sorting,
+            pagination
         },
         onSortingChange: setSorting,
+        onPaginationChange: setPagination,
+        autoResetPageIndex: false,
         meta: {
             changeGroup: (user: UserProfile) => { setSelectedUser(user); setShowChangeGroup(true); },
             deleteUser: (user: UserProfile) => { setSelectedUser(user); setShowConfirmDelete(true); },
         }
     });
 
-    if (isLoading) {
-        return (
-            <Container className="user-management">
-                <h3>User Management</h3>
-                <div className="text-center mt-4">
-                    <Spinner animation="border" role="status" />    
-                    <p className="mt-2">Loading users...</p>
-                </div>
-            </Container>
-        );
-    }
+    useEffect(() => {
+        if(hasNextPage && table.getRowModel().rows.length < pagination.pageSize && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [pagination.pageIndex]);
+
+    const TableBody = () => (
+            <tbody>
+                {table.getRowModel().rows.map((row) => (
+                    <tr
+                        key={row.id}
+                    >
+                        {row.getVisibleCells().map((cell) => (
+                            <td key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                        ))}
+                    </tr>
+                ))}
+                {(isLoading || isFetchingNextPage) && (
+                    <tr>
+                        {table.getVisibleLeafColumns().map((column) => (
+                            <td key={column.id}>
+                                <Placeholder animation="glow">
+                                    <Placeholder xs={12} />
+                                </Placeholder>
+                            </td>
+                        ))}
+                    </tr>
+                )}
+            </tbody>
+    );
 
     if (error) {
         return (
@@ -340,129 +385,149 @@ export function UserManagement() {
         );
     }
 
-    if (isSuccess) {
+    return (
+        <Container className="user-management">
+            <h3>User Management</h3>
+            <p>Manage user accounts, roles, and permissions.</p>
 
-        return (
-            <Container className="user-management">
-                <h3>User Management</h3>
-                <p>Manage user accounts, roles, and permissions.</p>
+            <GroupRequestCarousel
+                groupRequests={groupRequestsData ?? []}
+            />
 
-                <GroupRequestCarousel
-                    groupRequests={groupRequestsData ?? []}
-                />
+            <Table bordered hover>
+                <thead>
+                    {table.getHeaderGroups().map(headerGroup => {
+                        return (
+                            <tr key={headerGroup.id}>
+                                {headerGroup.headers.map(header => ( // map over the headerGroup headers array
+                                    <th
+                                        key={header.id}
+                                        colSpan={header.colSpan}
+                                        onClick={header.column.getToggleSortingHandler()}
+                                        style={{ cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
+                                    >
+                                        {flexRender(header.column.columnDef.header, header.getContext())}
+                                        {header.column.getIsSorted() ? (header.column.getIsSorted() === 'asc' ?
+                                            <FontAwesomeIcon icon={faChevronUp} className="ms-2" /> :
+                                            <FontAwesomeIcon icon={faChevronDown} className="ms-2" />) : ''}
 
-                <Table bordered hover>
-                    <thead>
-                        {table.getHeaderGroups().map(headerGroup => {
-                            return (
-                                <tr key={headerGroup.id}>
-                                    {headerGroup.headers.map(header => ( // map over the headerGroup headers array
-                                        <th
-                                            key={header.id}
-                                            colSpan={header.colSpan}
-                                            onClick={header.column.getToggleSortingHandler()}
-                                            style={{ cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
-                                        >
-                                            {flexRender(header.column.columnDef.header, header.getContext())}
-                                            {header.column.getIsSorted() ? (header.column.getIsSorted() === 'asc' ?
-                                                <FontAwesomeIcon icon={faChevronUp} className="ms-2" /> :
-                                                <FontAwesomeIcon icon={faChevronDown} className="ms-2" />) : ''}
-
-                                        </th>
-                                    ))}
-                                </tr>
-                            )
-                        })}
-                    </thead>
-                    <tbody>
-                        {table.getRowModel().rows.map((row) => (
-                            <tr
-                                key={row.id}
-                            >
-                                {row.getVisibleCells().map((cell) => (
-                                    <td key={cell.id}>
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                    </td>
+                                    </th>
                                 ))}
                             </tr>
-                        ))}
-                    </tbody>
-                </Table>
+                        )
+                    })}
+                </thead>
+                <TableBody/>
+            </Table>
 
-                {showConfirmDelete && (
-                    <FormModal
-                        show={showConfirmDelete}
-                        onClose={handleCloseDeleteModal}
-                        title="Confirm Delete User"
-                    >
-                        <Form onSubmit={deleteUserForm.handleSubmit(handleDeleteUser)}>
-                            <Modal.Body>
-                                <Alert variant="danger">
-                                    <FontAwesomeIcon icon={faTriangleExclamation} />
-                                    <b>Warning:</b> This action cannot be undone. Deleting a user
-                                    will remove any and all data associated with the user, such as camper profiles, rotarian profiles, and rotarian reviews.
-                                </Alert>
-                                <Form.Group>
-                                    <Form.Label>Enter the user's email address to confirm deletion</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        {...deleteUserForm.register("email", { required: true })}
-                                        isInvalid={selectedUser?.email !== deleteUserForm.watch("email")}
-                                    />
-                                    <Form.Control.Feedback type="invalid">
-                                        Please enter the correct email address.
-                                    </Form.Control.Feedback>
-                                </Form.Group>
-                            </Modal.Body>
-                            <Modal.Footer>
-                                <Button variant="light" onClick={handleCloseDeleteModal}>Cancel</Button>
-                                <SpinnerButton
-                                    loading={isDeletingUser}
-                                    variant="danger"
-                                    type="submit"
-                                    disabled={selectedUser?.email !== deleteUserForm.watch("email")}
-                                >
-                                    Delete
-                                </SpinnerButton>
-                            </Modal.Footer>
-                        </Form>
-                    </FormModal>
-                )}
+            <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
 
-                {showChangeGroup && (
-                    <FormModal
-                        show={showChangeGroup}
-                        onClose={handleCloseChangeGroupModal}
-                        title="Change Group"
+                {/* Pagination controls */}
+                <div className="d-flex align-items-center gap-2">
+                    {/* Previous button */}
+                    <Button
+                        variant="link"
+                        className="text-secondary p-1"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                        style={{ minWidth: '32px' }}
                     >
-                        <Form onSubmit={changeGroupForm.handleSubmit(handleChangeGroup)}>
-                            <Modal.Body>
-                                <div className="mb-3">
-                                    Current groups: {selectedUser ? selectedUser.groupNames.length > 0 ? selectedUser.groupNames.join(", ") : "CAMPERS" : "No user selected."}
-                                </div>
-                                <Form.Select {...changeGroupForm.register("groupName", { required: true })}>
-                                    <option value="" disabled>Select...</option>
-                                    <option value="CAMPERS">CAMPERS</option>
-                                    {AUTH_GROUPS.map((group) => (
-                                        <option key={group} value={group}>{group}</option>
-                                    ))}
-                                </Form.Select>
-                            </Modal.Body>
-                            <Modal.Footer>
-                                <Button variant="light" onClick={handleCloseChangeGroupModal}>Cancel</Button>
-                                <SpinnerButton
-                                    variant="primary"
-                                    type="submit"
-                                    disabled={isChangingGroup || changeGroupForm.watch("groupName") === ""}
-                                    loading={isChangingGroup}
-                                >
-                                    Change
-                                </SpinnerButton>
-                            </Modal.Footer>
-                        </Form>
-                    </FormModal>
-                )}
-            </Container>
-        );
-    }
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                    </Button>
+                    <span>
+                        Page {pagination.pageIndex + 1}
+                    </span>
+                    {/* Next button */}
+                    <Button
+                        variant="link"
+                        className="text-secondary p-1"
+                        onClick={() => {
+                            if(!table.getCanNextPage()) {
+                                fetchNextPage();
+                            }
+                            table.nextPage();
+                        }}
+                        disabled={!hasNextPage && !table.getCanNextPage() || isFetchingNextPage}
+                        style={{ minWidth: '32px' }}
+                    >
+                        <FontAwesomeIcon icon={faChevronRight} />
+                    </Button>
+                </div>
+            </div>
+
+            {showConfirmDelete && (
+                <FormModal
+                    show={showConfirmDelete}
+                    onClose={handleCloseDeleteModal}
+                    title="Confirm Delete User"
+                >
+                    <Form onSubmit={deleteUserForm.handleSubmit(handleDeleteUser)}>
+                        <Modal.Body>
+                            <Alert variant="danger">
+                                <FontAwesomeIcon icon={faTriangleExclamation} />
+                                <b>Warning:</b> This action cannot be undone. Deleting a user
+                                will remove any and all data associated with the user, such as camper profiles, rotarian profiles, and rotarian reviews.
+                            </Alert>
+                            <Form.Group>
+                                <Form.Label>Enter the user's email address to confirm deletion</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    {...deleteUserForm.register("email", { required: true })}
+                                    isInvalid={selectedUser?.email !== deleteUserForm.watch("email")}
+                                />
+                                <Form.Control.Feedback type="invalid">
+                                    Please enter the correct email address.
+                                </Form.Control.Feedback>
+                            </Form.Group>
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <Button variant="light" onClick={handleCloseDeleteModal}>Cancel</Button>
+                            <SpinnerButton
+                                loading={isDeletingUser}
+                                variant="danger"
+                                type="submit"
+                                disabled={selectedUser?.email !== deleteUserForm.watch("email")}
+                            >
+                                Delete
+                            </SpinnerButton>
+                        </Modal.Footer>
+                    </Form>
+                </FormModal>
+            )}
+
+            {showChangeGroup && (
+                <FormModal
+                    show={showChangeGroup}
+                    onClose={handleCloseChangeGroupModal}
+                    title="Change Group"
+                >
+                    <Form onSubmit={changeGroupForm.handleSubmit(handleChangeGroup)}>
+                        <Modal.Body>
+                            <div className="mb-3">
+                                Current groups: {selectedUser ? selectedUser.groupNames.length > 0 ? selectedUser.groupNames.join(", ") : "CAMPERS" : "No user selected."}
+                            </div>
+                            <Form.Select {...changeGroupForm.register("groupName", { required: true })}>
+                                <option value="" disabled>Select...</option>
+                                <option value="CAMPERS">CAMPERS</option>
+                                {AUTH_GROUPS.map((group) => (
+                                    <option key={group} value={group}>{group}</option>
+                                ))}
+                            </Form.Select>
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <Button variant="light" onClick={handleCloseChangeGroupModal}>Cancel</Button>
+                            <SpinnerButton
+                                variant="primary"
+                                type="submit"
+                                disabled={isChangingGroup || changeGroupForm.watch("groupName") === ""}
+                                loading={isChangingGroup}
+                            >
+                                Change
+                            </SpinnerButton>
+                        </Modal.Footer>
+                    </Form>
+                </FormModal>
+            )}
+        </Container>
+    );
 }
