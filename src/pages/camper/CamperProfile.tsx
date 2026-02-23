@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { MultiStepView } from "../../components/modals";
 import { IconButton } from "../../utils/button";
-import { Form, Row, Col, Spinner } from "react-bootstrap";
-import { faChevronRight, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { Form, Row, Col, Spinner, Alert } from "react-bootstrap";
+import { faChevronRight, faChevronLeft, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { GENDER_OPTIONS, PHONE_REGEX, EMAIL_REGEX } from "../constants";
 import { emitToast, ToastType } from "../../utils/notifications";
 import { useUpdateProfileMutation, useCreateProfileMutation } from "../../queries/mutations";
@@ -604,7 +604,7 @@ type CamperUserProfileForm3Type = {
 
 const mapSchemaToForm3 = (schema: CamperProfileSchemaType, rotaryClubs?: RotaryClubSchemaType[] | null): CamperUserProfileForm3Type => {
 
-    console.log(schema);
+    // console.log(schema);
     return {
         sponsoringRotaryClub: rotaryClubs?.find(club => club.id === schema.rotaryClubId)?.id ?? null,
         highSchool: schema.highSchool ?? null,
@@ -615,10 +615,11 @@ const mapSchemaToForm3 = (schema: CamperProfileSchemaType, rotaryClubs?: RotaryC
 }
 
 const mapFormToSchema3 = (form: CamperUserProfileForm3Type, userSub?: string): UpdateCamperProfileSchemaType => {
+    const clubId = form.sponsoringRotaryClub === "none" ? null : form.sponsoringRotaryClub;
 
     return {
         userSub: userSub ?? "",
-        rotaryClubId: form.sponsoringRotaryClub,
+        rotaryClubId: clubId,
         highSchool: form.highSchool,
         guidanceCounselorName: form.guidanceCounselorName,
         guidanceCounselorEmail: form.guidanceCounselorEmailAddress,
@@ -634,7 +635,8 @@ export const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperPr
     const {
         register,
         handleSubmit,
-        formState: { errors }
+        formState: { errors },
+        watch
     } = useForm<CamperUserProfileForm3Type>({
         values: mapSchemaToForm3(camperProfile, rotaryClubs)
     });
@@ -688,6 +690,7 @@ export const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperPr
                                         {club.name}
                                     </option>
                                 ))}
+                                <option value="none">None</option>
                             </Form.Select>
                             {isRotaryClubsPending && (
 
@@ -772,6 +775,18 @@ export const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperPr
                     </Form.Group>
                 </Col>
             </Row>
+            {watch("sponsoringRotaryClub") === "none" && (
+                <Row>
+                    <Col xs={12}>
+                        <br/>
+                        <Alert variant="warning">
+                            <FontAwesomeIcon icon={faTriangleExclamation} />
+                            <strong>Warning:</strong> You have selected "None" for your sponsoring Rotary Club.
+                            Unless you have EXPLICIT prior approval from RYLA directors, you should not select this option.
+                        </Alert>
+                    </Col>
+                </Row>
+            )}
             <ThinSpacer />
             <div className="flex-row">
                 <IconButton
@@ -800,6 +815,7 @@ export const CamperProfileForm3 = ({ camperProfile, onBack, onNext }: { camperPr
 import { DIETARY_RESTRICTIONS } from '../constants';
 import { useCamperProfileQuery, useCamperYearQuery } from '../../queries/queries';
 import { RotaryClubSchemaType } from "../../api/apiRotaryClub";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 type CamperUserProfileForm4Type = {
     dietaryRestrictions: string | null;
