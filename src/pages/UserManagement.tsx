@@ -1,6 +1,6 @@
 import { useContext, useMemo, useState, useEffect } from 'react';
 import { Table, Spinner, Alert, Dropdown, Modal, Button, Form, Card, Placeholder } from 'react-bootstrap';
-import { faCheck, faChevronDown, faChevronUp, faEllipsisV, faTriangleExclamation, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faChevronDown, faChevronUp, faEllipsisV, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useListUsersQuery, useListGroupRequestsQuery, useListRotaryClubsQuery } from '../queries/queries';
 import { FormModal } from '../components/modals';
