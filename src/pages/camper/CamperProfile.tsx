@@ -534,6 +534,9 @@ export function CamperProfileForm2({ camperProfile, onBack, onNext }: { camperPr
                         <Form.Control.Feedback type="invalid">
                             Required
                         </Form.Control.Feedback>
+                        <Form.Text>
+                            Please provide a contact different from either of the parents/guardians.
+                        </Form.Text>
                     </Form.Group>
                 </Col>
                 <Col xs={3}>
