@@ -349,30 +349,30 @@ export function UserManagement() {
     }, [pagination.pageIndex, pagination.pageSize]);
 
     const TableBody = () => (
-            <tbody>
-                {table.getRowModel().rows.map((row) => (
-                    <tr
-                        key={row.id}
-                    >
-                        {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                        ))}
-                    </tr>
-                ))}
-                {(isLoading || isFetchingNextPage) && (
-                    <tr>
-                        {table.getVisibleLeafColumns().map((column) => (
-                            <td key={column.id}>
-                                <Placeholder animation="glow">
-                                    <Placeholder xs={12} />
-                                </Placeholder>
-                            </td>
-                        ))}
-                    </tr>
-                )}
-            </tbody>
+        <tbody>
+            {table.getRowModel().rows.map((row) => (
+                <tr
+                    key={row.id}
+                >
+                    {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                    ))}
+                </tr>
+            ))}
+            {(isLoading || isFetchingNextPage) && (
+                <tr>
+                    {table.getVisibleLeafColumns().map((column) => (
+                        <td key={column.id}>
+                            <Placeholder animation="glow">
+                                <Placeholder xs={12} />
+                            </Placeholder>
+                        </td>
+                    ))}
+                </tr>
+            )}
+        </tbody>
     );
 
     if (error) {

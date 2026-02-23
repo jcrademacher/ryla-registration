@@ -9,7 +9,7 @@ const client = new CognitoIdentityProviderClient()
 
 export const handler: Handler = async (event) => {
 
-    const limit = event.arguments.limit ?? 25;
+    const limit = event.arguments.limit ?? undefined;
     const nextToken = event.arguments.nextToken ?? undefined;
 
     const command = new ListUsersCommand({
