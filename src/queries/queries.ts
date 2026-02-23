@@ -107,7 +107,7 @@ export function useUrlToCamperApplicationQuery(identityId?: string, enabled: boo
     return useUrlToCamperFileQuery(identityId, "camper-application", enabled);
 }
 
-export function useListUsersQuery(limit?: number | null, nextToken?: string | null) {
+export function useListUsersQuery(limit?: number | null) {
     return useInfiniteQuery({
         queryKey: ["users"],
         queryFn: ({ pageParam }: { pageParam: string | null }) => {

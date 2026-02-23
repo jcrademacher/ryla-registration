@@ -20,6 +20,7 @@ import { createFromISO } from '../utils/datetime';
 import { emitToast, ToastType } from '../utils/notifications';
 import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { Container } from 'react-bootstrap';
+import { DataTablePagination } from '../components/table';
 
 type ChangeGroupFormType = {
     groupName: string | null;
@@ -345,7 +346,7 @@ export function UserManagement() {
         if(hasNextPage && table.getRowModel().rows.length < pagination.pageSize && !isFetchingNextPage) {
             fetchNextPage();
         }
-    }, [pagination.pageIndex]);
+    }, [pagination.pageIndex, pagination.pageSize]);
 
     const TableBody = () => (
             <tbody>
@@ -420,11 +421,16 @@ export function UserManagement() {
                 <TableBody/>
             </Table>
 
-            <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
+            <DataTablePagination 
+                table={table} 
+                fetchNextPage={fetchNextPage}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+            />
 
-                {/* Pagination controls */}
+            {/* <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
+
                 <div className="d-flex align-items-center gap-2">
-                    {/* Previous button */}
                     <Button
                         variant="link"
                         className="text-secondary p-1"
@@ -437,7 +443,6 @@ export function UserManagement() {
                     <span>
                         Page {pagination.pageIndex + 1}
                     </span>
-                    {/* Next button */}
                     <Button
                         variant="link"
                         className="text-secondary p-1"
@@ -453,7 +458,7 @@ export function UserManagement() {
                         <FontAwesomeIcon icon={faChevronRight} />
                     </Button>
                 </div>
-            </div>
+            </div> */}
 
             {showConfirmDelete && (
                 <FormModal
