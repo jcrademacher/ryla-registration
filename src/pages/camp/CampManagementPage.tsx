@@ -45,7 +45,14 @@ export type CamperProfileRowData = CamperProfileSchemaType;
 const columnHelper = createColumnHelper<CamperProfileRowData>();
 
 const luxonSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
-    return createFromISO(rowA.original[columnId]) < createFromISO(rowB.original[columnId]) ? -1 : 1;
+    const valA = rowA.original[columnId];
+    const valB = rowB.original[columnId];
+    
+    if(!valA && valB) return 1;
+    if(!valA && !valB) return 0;
+    if(valA && !valB) return -1;
+
+    return createFromISO(valA) < createFromISO(valB) ? -1 : 1;
 }
 
 interface StatusColumnProps {
