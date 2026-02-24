@@ -44,13 +44,13 @@ export type CamperProfileRowData = CamperProfileSchemaType;
 
 const columnHelper = createColumnHelper<CamperProfileRowData>();
 
-const luxonSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
+const dateSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
     const valA = rowA.original[columnId];
     const valB = rowB.original[columnId];
     
-    if(!valA && valB) return 1;
+    if(!valA && valB) return -1;
     if(!valA && !valB) return 0;
-    if(valA && !valB) return -1;
+    if(valA && !valB) return 1;
 
     return createFromISO(valA) < createFromISO(valB) ? -1 : 1;
 }
@@ -104,7 +104,7 @@ const columns = [
         cell: (props) => <StatusColumn status={props.getValue()} />,
     }),
     columnHelper.accessor('applicationComplete', {
-        header: () => <StatusHeader title="A" helpText="Camper has completed application (essay, references, etc.)" />,
+        header: () => <StatusHeader title="A" helpText="Camper has completed application (including essay if required)" />,
         cell: (props) => <StatusColumn status={props.getValue()} />,
     }),
     columnHelper.accessor('rotarianReview', {
@@ -165,7 +165,7 @@ const columns = [
                 return ''; 
             }
         },
-        sortingFn: luxonSortingFn
+        sortingFn: dateSortingFn,
     }),
     columnHelper.accessor('email', {
         header: 'Email',
@@ -189,7 +189,7 @@ const columns = [
     columnHelper.accessor('birthdate', {
         header: 'Birthdate',
         cell: info => info.getValue() ? createFromISO(info.getValue() as string).toLocaleString(DateTime.DATE_MED) : '',
-        sortingFn: luxonSortingFn
+        sortingFn: dateSortingFn
     }),
     columnHelper.accessor('gender', {
         header: 'Gender',
@@ -423,6 +423,9 @@ export const CampManagementPage = () => {
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getRowId: (row) => row.userSub,
+        defaultColumn: {
+            sortUndefined: 'last'
+        },
         state: {
             sorting,
             columnVisibility: camp?.viewState ?? {},

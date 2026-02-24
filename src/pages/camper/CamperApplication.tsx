@@ -200,7 +200,7 @@ export function CamperApplicationView() {
                         </tr>
                         <tr>
                             <th>Rotary Club</th>
-                            <td>{rotaryClub?.name || ''}</td>
+                            <td>{rotaryClub?.name || 'None'}</td>
                         </tr>
                         
                         <tr>
@@ -460,11 +460,8 @@ function ApplicationGroup() {
             </>
         );
     }
-    else if (rotaryClub && !rotaryClub.requiresApplication) {
-        return <p>Your rotary club does not require an application.</p>;
-    }
     else {
-        return null;
+        return <p>Your rotary club does not require an application.</p>;
     }
 }
 

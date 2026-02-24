@@ -72,7 +72,7 @@ export function SubmitRecommendationPage() {
                     </Form.Control.Feedback>
                 </Form.Group>
             </Form>
-            {recForm.watch("emailAddress") === recommendation?.emailAddress && (
+            {recForm.watch("emailAddress").toLowerCase() === recommendation?.emailAddress?.toLowerCase() && (
                 <>
                     <ThinSpacer />
                     <p>You are submitting a recommendation for {recommendation?.camperName}. Please upload your letter of recommendation as a PDF file below.</p>
