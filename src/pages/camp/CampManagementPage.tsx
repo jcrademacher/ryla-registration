@@ -423,9 +423,6 @@ export const CampManagementPage = () => {
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getRowId: (row) => row.userSub,
-        defaultColumn: {
-            sortUndefined: 'last'
-        },
         state: {
             sorting,
             columnVisibility: camp?.viewState ?? {},
