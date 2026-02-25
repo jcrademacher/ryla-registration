@@ -55,6 +55,21 @@ const dateSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
     return createFromISO(valA) < createFromISO(valB) ? -1 : 1;
 }
 
+const undefinedLastSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
+    const a = rowA.original[columnId];
+    const b = rowB.original[columnId];
+  
+    const aMissing = !a;
+    const bMissing = !b;
+  
+    if (aMissing && bMissing) return 0;
+    if (aMissing) return 1;   // A after B → undefined/empty last
+    if (bMissing) return -1;  // B after A
+  
+    // Normal comparison (string example)
+    return String(a).localeCompare(String(b));
+  };
+
 interface StatusColumnProps {
     status: "APPROVED" | "PENDING" | "REJECTED" | boolean | null | undefined,
     isLoading?: boolean
@@ -208,6 +223,7 @@ const columns = [
     }),
     columnHelper.accessor('highSchool', {
         header: 'High School',
+        sortingFn: undefinedLastSortingFn,
     }),
     columnHelper.accessor('rotaryClubId', {
         header: 'Sponsoring Rotary Club',
