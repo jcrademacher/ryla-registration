@@ -1,7 +1,7 @@
 import { CamperProfileSchemaType } from "../api/apiCamperProfile";
 import { createFromISO, formatDateFull } from "./datetime";
 
-export function getCamperName(camperProfile?: CamperProfileSchemaType | null) {
+export function getCamperName(camperProfile?: Pick<CamperProfileSchemaType, "firstName" | "nickname" | "middleInitial" | "lastName"> | null) {
 
     if (!camperProfile) {
         return "No Name";
@@ -30,7 +30,7 @@ export function getCamperAddress(camperProfile?: CamperProfileSchemaType | null)
 
 export function formatPhoneNumber(phoneNumber?: string | null) {
     if (!phoneNumber) {
-        return "";
+        return undefined;
     }
 
     return phoneNumber.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3");

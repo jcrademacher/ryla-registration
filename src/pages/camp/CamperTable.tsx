@@ -4,7 +4,7 @@ import { Placeholder } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { flexRender } from "@tanstack/react-table";
-import { CamperProfileRowData } from "./CampManagementPage";
+import { CamperProfileRowData } from "../../api/apiCamperTable";
 import { useNavigate } from "react-router";
 
 

@@ -2,11 +2,10 @@
 import { CampManagementHeader } from './CampManagementHeader';
 import { CamperTable } from './CamperTable';
 import { useState } from 'react';
-import { useCamperProfilesQuery, useCampQuery } from '../../queries/adminQueries';
-import { useObserveCamperProfiles } from '../../queries/subscriptions';
+import { useCamperDataAdminQuery, useCampQuery } from '../../queries/adminQueries';
 import { createFromISO } from '../../utils/datetime';
 import { DateTime } from 'luxon';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Routes, Route, useNavigate } from 'react-router';
 import { 
     ColumnFiltersState, 
@@ -22,10 +21,9 @@ import {
     RowSelectionState 
 } from '@tanstack/react-table';
 
-import { CamperProfileSchemaType } from '../../api/apiCamperProfile';
 import { Placeholder } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faClockRotateLeft, faTimes, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faClockRotateLeft, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { formatPhoneNumber } from '../../utils/fields';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 // import { generateFakeCamperProfiles } from '../../utils/makeData';
@@ -34,26 +32,27 @@ import { useUpdateCamperProfileFilterStateMutation, useUpdateCamperProfileViewSt
 import { useQueryClient } from '@tanstack/react-query';
 import { TableActions } from './TableActions';
 import { CampSettings } from './CampSettings';
-import { functionalQueryClient } from '../../main';
-import { useDocumentStatusQuery, useRotarianReviewQuery, useRotaryClubQuery } from '../../queries/queries';
-import { PlaceholderElement } from '../../components/PlaceholderElement';
-import { RotarianReviewSchemaType } from '../../api/apiRotarianReview';
-
-
-export type CamperProfileRowData = CamperProfileSchemaType;
+import { CamperProfileRowData } from '../../api/apiCamperTable';
 
 const columnHelper = createColumnHelper<CamperProfileRowData>();
 
-const dateSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
-    const valA = rowA.original[columnId];
-    const valB = rowB.original[columnId];
-    
-    if(!valA && valB) return -1;
-    if(!valA && !valB) return 0;
-    if(valA && !valB) return 1;
+const TSHIRT_SIZE_ORDER: Record<string, number> = {
+    'XXS': 0, 'XS': 1, 'S': 2, 'M': 3, 'L': 4, 'XL': 5, 'XXL': 6,
+};
 
-    return createFromISO(valA) < createFromISO(valB) ? -1 : 1;
-}
+const tshirtSizeSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
+    const a = rowA.original[columnId];
+    const b = rowB.original[columnId];
+
+    const aMissing = !a;
+    const bMissing = !b;
+
+    if (aMissing && bMissing) return 0;
+    if (aMissing) return 1;
+    if (bMissing) return -1;
+
+    return (TSHIRT_SIZE_ORDER[a] ?? 99) - (TSHIRT_SIZE_ORDER[b] ?? 99);
+};
 
 const undefinedLastSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
     const a = rowA.original[columnId];
@@ -124,171 +123,146 @@ const columns = [
     }),
     columnHelper.accessor('rotarianReview', {
         header: () => <StatusHeader title="R" helpText="Rotarian review status" />,
-        cell: (props) => {
-            const { data: rotarianReview, isPending: isPendingRotarianReview } = useRotarianReviewQuery(props.row.original.userSub);
-            
-            return <StatusColumn status={rotarianReview?.review} isLoading={isPendingRotarianReview} />;
-        },
-        filterFn: (row, _, filterValue) => {
-
-            const rotarianReview = functionalQueryClient.getQueryData(['rotarianReview', row.original.userSub]) as RotarianReviewSchemaType | null | undefined;
-            
-            if(filterValue.length === 0) {
-                return true;
-            }
-            else {
-                return filterValue.includes(rotarianReview?.review ?? "");
-            }
-            // return true;
-        }
-
+        cell: (props) => <StatusColumn status={props.getValue()} />,
     }),
     columnHelper.accessor('documentsComplete', {
         header: () => {
             return <StatusHeader title="D" helpText="Camper has completed all required documents (including mailed forms)" />;
         },
-        cell: (props) => {
-            const { data: documentsComplete, isLoading: isDocumentsCompleteLoading } = useDocumentStatusQuery(props.row.original.userSub, props.row.original.campId);
-            return <StatusColumn status={documentsComplete} isLoading={isDocumentsCompleteLoading} />;
-        },
-        filterFn: (row, _, filterValue) => {
-            const documentsComplete = functionalQueryClient.getQueryData(
-                ['documentStatus', row.original.campId, row.original.userSub]) as boolean | null | undefined;
-            return documentsComplete === filterValue;
-        }
+        cell: (props) => <StatusColumn status={props.getValue()} />
     }),
-    // columnHelper.accessor('attendanceConfirmations', {
-    //     header: () => <StatusHeader title="C" helpText="Camper has confirmed attendance" />,
-    //     cell: (props) => <StatusColumn status={!!props.getValue()} />,
-    //     filterFn: (row, _, filterValue) => {
-    //         return (row.original.attendanceConfirmations ?? 0) >= filterValue;
-    //     }
-    // }),
-    // columnHelper.accessor('createdAt', {
-    //     header: 'Created At',
-    //     cell: info => createFromISO(info.getValue()).toLocaleString(DateTime.DATETIME_MED),
-    //     sortingFn: luxonSortingFn
-    // }),
-    columnHelper.accessor('applicationSubmittedAt', {
+    columnHelper.accessor(row => {
+        const val = row.applicationSubmittedAt;
+        return val ? createFromISO(val).toLocaleString(DateTime.DATETIME_MED) : undefined;
+    }, {
+        id: 'applicationSubmittedAt',
         header: 'Submitted At',
-        cell: info => {
-            const val = info.getValue();
-            if(val) {
-                return createFromISO(val).toLocaleString(DateTime.DATETIME_MED);
-            }
-            else {
-                return ''; 
-            }
-        },
-        sortingFn: dateSortingFn,
+        // sortingFn: dateSortingFn,
+        sortDescFirst: true,
     }),
-    columnHelper.accessor('email', {
+    columnHelper.accessor(row => row.email ?? undefined, {
+        id: 'email',
         header: 'Email',
     }),
-    columnHelper.accessor('firstName', {
+    columnHelper.accessor(row => row.firstName ?? undefined, {
+        id: 'firstName',
         header: 'First Name',
     }),
-    columnHelper.accessor('middleInitial', {
+    columnHelper.accessor(row => row.middleInitial ?? undefined, {
+        id: 'middleInitial',
         header: 'Middle Initial',
     }),
-    columnHelper.accessor('lastName', {
+    columnHelper.accessor(row => row.lastName ?? undefined, {
+        id: 'lastName',
         header: 'Last Name',
     }),
-    columnHelper.accessor('phone', {
-        header: 'Phone',
-        cell: info => formatPhoneNumber(info.getValue())
+    columnHelper.accessor(row => formatPhoneNumber(row.phone) ?? undefined, {
+        id: 'phone',
+        header: 'Phone'
     }),
-    columnHelper.accessor('nickname', {
+    columnHelper.accessor(row => row.nickname ?? undefined, {
+        id: 'nickname',
         header: 'Nickname',
     }),
-    columnHelper.accessor('birthdate', {
+    columnHelper.accessor(row => {
+        const val = row.birthdate;
+        return val ? createFromISO(val).toLocaleString(DateTime.DATE_MED) : undefined;
+    }, {
+        id: 'birthdate',
         header: 'Birthdate',
-        cell: info => info.getValue() ? createFromISO(info.getValue() as string).toLocaleString(DateTime.DATE_MED) : '',
-        sortingFn: dateSortingFn
     }),
-    columnHelper.accessor('gender', {
+    columnHelper.accessor(row => row.gender ?? undefined, {
+        id: 'gender',
         header: 'Gender',
     }),
-    columnHelper.accessor('address', {
+    columnHelper.accessor(row => row.address ?? undefined, {
+        id: 'address',
         header: 'Address',
     }),
-    columnHelper.accessor('city', {
+    columnHelper.accessor(row => row.city ?? undefined, {
+        id: 'city',
         header: 'City',
     }),
-    columnHelper.accessor('state', {
+    columnHelper.accessor(row => row.state ?? undefined, {
+        id: 'state',
         header: 'State',
     }),
-    columnHelper.accessor('zipcode', {
+    columnHelper.accessor(row => row.zipcode ?? undefined, {
+        id: 'zipcode',
         header: 'Zipcode',
     }),
-    columnHelper.accessor('highSchool', {
-        header: 'High School',
-        sortingFn: undefinedLastSortingFn,
+    columnHelper.accessor(row => row.highSchool ?? undefined, {
+        id: 'highSchool',
+        header: 'High School'
     }),
-    columnHelper.accessor('rotaryClubId', {
+    columnHelper.accessor(row => row.rotaryClub?.name ?? undefined, {
+        id: 'rotaryClub',
         header: 'Sponsoring Rotary Club',
-        cell: (props) => {
-            const { data: rotaryClub, isPending: isPendingRotaryClub, isError: isErrorRotaryClub } = useRotaryClubQuery(props.row.original.rotaryClubId);
-            if(isErrorRotaryClub) {
-                return <div className="text-danger">
-                    <FontAwesomeIcon icon={faXmark} className="me-1" />
-                    Failed
-                </div>;
-            }
-            if(props.row.original.rotaryClubId)
-                return <PlaceholderElement isLoading={isPendingRotaryClub} props={{ xs: 7 }}>{rotaryClub?.name}</PlaceholderElement>;
-            else 
-                return null;
-        }
     }),
-    columnHelper.accessor('guidanceCounselorName', {
+    columnHelper.accessor(row => row.guidanceCounselorName ?? undefined, {
+        id: 'guidanceCounselorName',
         header: 'Guidance Counselor Name',
     }),
-    columnHelper.accessor('guidanceCounselorEmail', {
+    columnHelper.accessor(row => row.guidanceCounselorEmail ?? undefined, {
+        id: 'guidanceCounselorEmail',
         header: 'Guidance Counselor Email',
     }),
-    columnHelper.accessor('guidanceCounselorPhone', {
+    columnHelper.accessor(row => row.guidanceCounselorPhone ?? undefined, {
+        id: 'guidanceCounselorPhone',
         header: 'Guidance Counselor Phone',
-        cell: info => formatPhoneNumber(info.getValue())
     }),
-    columnHelper.accessor('dietaryRestrictions', {
+    columnHelper.accessor(row => row.dietaryRestrictions ?? undefined, {
+        id: 'dietaryRestrictions',
         header: 'Dietary Restrictions',
     }),
-    columnHelper.accessor('dietaryRestrictionsNotes', {
+    columnHelper.accessor(row => row.dietaryRestrictionsNotes ?? undefined, {
+        id: 'dietaryRestrictionsNotes',
         header: 'Dietary Restrictions Notes',
     }),
-    columnHelper.accessor('parent1FirstName', {
+    columnHelper.accessor(row => row.parent1FirstName ?? undefined, {
+        id: 'parent1FirstName',
         header: 'Parent 1 First Name',
     }),
-    columnHelper.accessor('parent1LastName', {
+    columnHelper.accessor(row => row.parent1LastName ?? undefined, {
+        id: 'parent1LastName',
         header: 'Parent 1 Last Name',
     }),
-    columnHelper.accessor('parent1Email', {
+    columnHelper.accessor(row => row.parent1Email ?? undefined, {
+        id: 'parent1Email',
         header: 'Parent 1 Email',
     }),
-    columnHelper.accessor('parent1Phone', {
+    columnHelper.accessor(row => formatPhoneNumber(row.parent1Phone) ?? undefined, {
+        id: 'parent1Phone',
         header: 'Parent 1 Phone',
-        cell: info => formatPhoneNumber(info.getValue()),
     }),
-    columnHelper.accessor('parent2FirstName', {
+    columnHelper.accessor(row => row.parent2FirstName ?? undefined, {
+        id: 'parent2FirstName',
         header: 'Parent 2 First Name',
     }),
-    columnHelper.accessor('parent2LastName', {
+    columnHelper.accessor(row => row.parent2LastName ?? undefined, {
+        id: 'parent2LastName',
         header: 'Parent 2 Last Name',
     }),
-    columnHelper.accessor('parent2Email', {
+    columnHelper.accessor(row => row.parent2Email ?? undefined, {
+        id: 'parent2Email',
         header: 'Parent 2 Email',
     }),
-    columnHelper.accessor('parent2Phone', {
+    columnHelper.accessor(row => formatPhoneNumber(row.parent2Phone) ?? undefined, {
+        id: 'parent2Phone',
         header: 'Parent 2 Phone',
-        cell: info => formatPhoneNumber(info.getValue()),
     }),
-    columnHelper.accessor('emergencyContactName', {
+    columnHelper.accessor(row => row.emergencyContactName ?? undefined, {
+        id: 'emergencyContactName',
         header: 'Emergency Contact Name',
     }),
-    columnHelper.accessor('emergencyContactPhone', {
+    columnHelper.accessor(row => formatPhoneNumber(row.emergencyContactPhone) ?? undefined, {
+        id: 'emergencyContactPhone',
         header: 'Emergency Contact Phone',
-        cell: info => formatPhoneNumber(info.getValue()),
+    }),
+    columnHelper.accessor(row => row.tshirtSize ?? undefined, {
+        id: 'tshirtSize',
+        header: 'T-Shirt Size',
+        sortingFn: tshirtSizeSortingFn,
     }),
 ];
 
@@ -299,14 +273,8 @@ export const CampManagementPage = () => {
     const { campId } = useParams();
     const { data: camp } = useCampQuery();
 
-    const { data: campers, isPending } = useCamperProfilesQuery();
-    // useObserveCamperProfilesByCampQuery(campId);
+    const { data: campers, isPending } = useCamperDataAdminQuery(campId);
     const queryClient = useQueryClient();
-
-    useEffect(() => {
-        const sub = useObserveCamperProfiles(queryClient, campId);
-        return () => sub.unsubscribe();
-    }, [queryClient, campId]);
 
     const mutateViewState = useUpdateCamperProfileViewStateMutation();
     const mutateFilterState = useUpdateCamperProfileFilterStateMutation();
@@ -363,10 +331,12 @@ export const CampManagementPage = () => {
             rotarianReviewFilter.push("REJECTED");
         }
 
-        filterResult.push({
-            id: 'rotarianReview',
-            value: rotarianReviewFilter,
-        });
+        if(rotarianReviewFilter.length > 0) {
+            filterResult.push({
+                id: 'rotarianReview',
+                value: rotarianReviewFilter,
+            });
+        }
 
         if (camp?.filterState?.confirmedCampers) {
             filterResult.push({
@@ -390,6 +360,8 @@ export const CampManagementPage = () => {
         else {
             newFilterState = updaterOrValue;
         }
+
+        console.log(newFilterState);
 
         const rotarianReviewFilter = newFilterState.find(filter => filter.id === 'rotarianReview')?.value;
 
@@ -431,7 +403,6 @@ export const CampManagementPage = () => {
 
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({}) //manage your own row selection state
 
-
     const table = useReactTable({
         data: tableData,
         columns,
@@ -444,6 +415,11 @@ export const CampManagementPage = () => {
             columnVisibility: camp?.viewState ?? {},
             columnFilters: filterState,
             rowSelection
+        },
+        defaultColumn: {
+            sortingFn: undefinedLastSortingFn,
+            sortUndefined: 'last',
+            sortDescFirst: false,
         },
         onSortingChange: setSorting,
         onColumnVisibilityChange: handleColumnVisibilityChange,

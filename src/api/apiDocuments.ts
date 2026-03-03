@@ -224,8 +224,8 @@ export async function uploadCamperDocument(
 
     let result;
     if(file) {
-        if(file.size > 1000000) {
-            throw new Error("File size is too large (Maximum file size is 1MB)");
+        if(file.size > 4000000) {
+            throw new Error("File size is too large (Maximum file size is 4MB)");
         }
         
         if(existingEntry?.filepath) {
@@ -248,12 +248,14 @@ export async function uploadCamperDocument(
 
     let retval;
     if(existingEntry) {
+        console.log("updating existing document", document);
         retval = await client.models.CamperDocument.update({
             ...document,
             owner: document.camperUserSub
         }, { authMode: "userPool" });
     }
     else {
+        console.log("creating new document", document);
         retval = await client.models.CamperDocument.create({
             ...document,
             owner: document.camperUserSub
@@ -298,13 +300,17 @@ export async function getDocumentStatus(camperUserSub: string, campId: string): 
     const templates = await listDocumentTemplatesByCamp(campId);
     const query = await listCamperDocuments(camperUserSub);
 
-    if(query) {
-        return templates
-            ?.filter(template => template.required && template.type !== "viewonly")
-            .every(template => query.some(document => document.templateId === template.id && document.approved && document.received)) ?? false;
+    if(query && templates) {
+        return checkDocumentStatus(templates, query);
     }
     else {
         return false;
     }
+}
+
+export function checkDocumentStatus(templates: DocumentTemplateSchemaType[], documents: Pick<CamperDocumentSchemaType, "templateId" | "approved" | "received">[]): boolean {
+    return templates
+        ?.filter(template => template.required && template.type !== "viewonly")
+        .every(template => documents.some(document => document.templateId === template.id && document.approved && document.received));
 }
 
