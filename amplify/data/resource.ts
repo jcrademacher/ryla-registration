@@ -123,8 +123,8 @@ const schema = a.schema({
         templateId: a.id().required(),
         template: a.belongsTo('DocumentTemplate', 'templateId'),
         owner: a.string().authorization((allow) => [
-            allow.owner().to(['read']),
-            allow.group("ADMINS").to(["read", "update", "delete"]),
+            allow.owner(),
+            allow.group("ADMINS"),
         ]),
         approved: a.boolean().default(true),
     })
@@ -135,7 +135,6 @@ const schema = a.schema({
         allow.group("ROTARIANS").to(["read"]),
         allow.group("COORDINATORS").to(["read"]),
         allow.group("ADMINS").to(["read", "create","update", "delete"]),
-
     ]),
 
     DocumentTemplate: a.model({

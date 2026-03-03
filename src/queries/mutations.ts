@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { 
     setUserAsCamper, 
     createCamperProfile, 
@@ -195,8 +195,6 @@ export function useDeleteUserMutation() {
 }
 
 export function useDecideCampersMutation() {
-    const queryClient = useQueryClient();
-    
     return useMutation({
         mutationKey: ['decideCampers'],
         mutationFn: async ({ campers }: { campers: { camperSub: string | undefined, decision: RotarianReviewDecision | null }[] }) => {
@@ -221,9 +219,6 @@ export function useDecideCampersMutation() {
 
             return await Promise.all(promises);
         },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['rotarianReview'] });
-        }
     });
 }
 

@@ -6,7 +6,7 @@ import { createEDT, formatCampDates, formatDateFullWithTime } from '../../utils/
 import { Button, Form, Placeholder, DropdownButton } from 'react-bootstrap';
 import { useCampQuery } from '../../queries/adminQueries';
 import { Table as TanstackTable } from '@tanstack/table-core';
-import { CamperProfileRowData } from './CampManagementPage';
+import { CamperProfileRowData } from '../../api/apiCamperTable';
 import { ThinSpacer } from '../../components/ThinSpacer';
 
 // interface CampMetrics {

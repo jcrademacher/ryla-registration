@@ -2,7 +2,7 @@ import { faEye, faFileAlt, faClockRotateLeft } from "@fortawesome/free-solid-svg
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button, Dropdown, Form, Modal } from "react-bootstrap";
 import { Table as TanstackTable } from "@tanstack/table-core";
-import { CamperProfileRowData } from "./CampManagementPage";
+import { CamperProfileRowData } from "../../api/apiCamperTable";
 import { useCampQuery } from "../../queries/adminQueries";
 import { useDocumentTemplatesByCampQuery, useCamperDocumentsQuery } from "../../queries/queries";
 import { useContext, useMemo, useState } from "react";
@@ -13,7 +13,7 @@ import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { emitToast, ToastType } from "../../utils/notifications";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { useApproveDocumentEmailMutation, useReceivedDocumentEmailMutation, useRejectDocumentEmailMutation } from "../../queries/emailMutations";
+import { useApproveDocumentEmailMutation, useRejectDocumentEmailMutation } from "../../queries/emailMutations";
 import { getFilepathFilename } from "../../utils/fields";
 import { AuthContext } from "../../App";
 import { DateTime } from "luxon";
@@ -102,7 +102,7 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                                 disabled={!hasSelectedRows}
                                 onClick={() => setSelectedDocument(doc)}
                             >
-                                Mark "{doc.name}" as received...
+                                Approve "{doc.name}"...
                             </Dropdown.Item>
                         ))}
                         <Dropdown.Item
@@ -157,7 +157,7 @@ function ConfirmDocumentReceivedModal({
     const selectedCampers = table.getSelectedRowModel().rows.map(row => row.original);
 
     const { mutate: uploadDocuments, isPending: isUploadingDocuments } = useUploadMultipleCamperDocumentsMutation();
-    const { mutate: receivedDocumentEmail } = useReceivedDocumentEmailMutation();
+    const { mutate: approveDocumentEmail } = useApproveDocumentEmailMutation();
     const queryClient = useQueryClient();
 
     const handleConfirm = () => {
@@ -174,24 +174,24 @@ function ConfirmDocumentReceivedModal({
                 document: {
                     camperUserSub: camper.userSub,
                     templateId: documentTemplate.id,
-                    received: true
+                    received: true,
+                    approved: true
                 }
             })),
         },
             {
                 onSuccess: () => {
                     selectedCampers.forEach(camper => {
-                        queryClient.invalidateQueries({ queryKey: ['documentStatus', camper.campId, camper.userSub] });
-
-                        receivedDocumentEmail({
+                        approveDocumentEmail({
                             templateName: documentTemplate?.name ?? '',
-                            to: [camper.email, camper.parent1Email],
+                            to: [camper.email, camper.parent1Email, camper.parent2Email],
                         });
                     });
 
-                    emitToast(`'${documentTemplate.name}' marked as received for ${selectedCampers.length} campers`, ToastType.Success);
+                    emitToast(`'${documentTemplate.name}' approved for ${selectedCampers.length} campers`, ToastType.Success);
                 },
                 onSettled: () => {
+                    queryClient.invalidateQueries({ queryKey: ['camperDataAdmin'] });
                     onClose();
                 }
             }
@@ -228,7 +228,7 @@ interface ChangeDocumentStatusModalProps {
 
 type ChangeDocumentStatusForm = {
     templateId: string;
-    statusAction: 'approve' | 'reject' | 'missing' | 'received';
+    statusAction: 'approve' | 'reject' | 'missing';
     message?: string;
 }
 
@@ -247,7 +247,6 @@ function ChangeDocumentStatusModal({
     const { mutate: uploadDocument, isPending: isUpdating } = useUploadCamperDocumentMutation();
     const { mutate: rejectDocumentEmail } = useRejectDocumentEmailMutation();
     const { mutate: approveDocumentEmail } = useApproveDocumentEmailMutation();
-    const { mutate: receivedDocumentEmail } = useReceivedDocumentEmailMutation();
 
     const queryClient = useQueryClient();
 
@@ -275,16 +274,16 @@ function ChangeDocumentStatusModal({
 
         switch (data.statusAction) {
             case 'approve':
-                updates = { approved: true };
+                updates = { 
+                    approved: true,
+                    received: true
+                };
                 break;
             case 'reject':
                 updates = { approved: false };
                 break;
             case 'missing':
                 updates = { received: false };
-                break;
-            case 'received':
-                updates = { received: true };
                 break;
         }
 
@@ -297,16 +296,14 @@ function ChangeDocumentStatusModal({
             },
         }, {
             onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: ['camperDocuments', selectedCamper.userSub] });
+                console.log('selectedDocument', selectedDocument);
+                console.log('selectedTemplate', selectedTemplate);
                 // Invalidate relevant queries
                 if (data.statusAction === 'reject') {
-                    console.log('selectedDocument', selectedDocument);
-                    console.log('selectedTemplate', selectedTemplate);
-
                     rejectDocumentEmail({
                         docName: getFilepathFilename(selectedDocument?.filepath) ?? '',
                         templateName: selectedTemplate?.name ?? '',
-                        to: [selectedCamper.email, selectedCamper.parent1Email],
+                        to: [selectedCamper.email, selectedCamper.parent1Email, selectedCamper.parent2Email],
                         message: data.message,
                         replyTo: authContext.attributes.email
                     });
@@ -314,14 +311,7 @@ function ChangeDocumentStatusModal({
                 else if (data.statusAction === 'approve') {
                     approveDocumentEmail({
                         templateName: selectedTemplate?.name ?? '',
-                        to: [selectedCamper.email, selectedCamper.parent1Email],
-                        replyTo: authContext.attributes.email
-                    });
-                }
-                else if (data.statusAction === 'received') {
-                    receivedDocumentEmail({
-                        templateName: selectedTemplate?.name ?? '',
-                        to: [selectedCamper.email, selectedCamper.parent1Email],
+                        to: [selectedCamper.email, selectedCamper.parent1Email, selectedCamper.parent2Email],
                         replyTo: authContext.attributes.email
                     });
                 }
@@ -339,6 +329,7 @@ function ChangeDocumentStatusModal({
                 emitToast(`Document status updated for ${selectedCamper.firstName} ${selectedCamper.lastName}`, ToastType.Success);
             },
             onSettled: () => {
+                queryClient.invalidateQueries({ queryKey: ['camperDataAdmin'] });
                 form.reset();
                 onClose();
             },
@@ -406,12 +397,6 @@ function ChangeDocumentStatusModal({
                                 disabled={!selectedTemplateIsMailed}
                             >
                                 Mark as Missing
-                            </option>
-                            <option
-                                value="received"
-                                disabled={!selectedTemplateIsMailed}
-                            >
-                                Mark as Received
                             </option>
                         </Form.Select>
                         <Form.Control.Feedback type="invalid">
@@ -496,9 +481,7 @@ function ChangeApplicationStatusModal({
                     emitToast(`Application status updated for ${selectedCampers.length} camper(s)`, ToastType.Success);
                 },
                 onSettled: () => {
-                    selectedCampers.forEach(camper => { 
-                        queryClient.invalidateQueries({ queryKey: ['documentStatus', camper.campId, camper.userSub] });
-                    });
+                    queryClient.invalidateQueries({ queryKey: ['camperDataAdmin'] });
                     onCancel();
                 }
             }
@@ -574,6 +557,8 @@ function ChangeReviewStatusModal({
         onClose();
     }
 
+    const queryClient = useQueryClient();
+
     const selectedCampers = table.getSelectedRowModel().rows.map(row => row.original);
 
     const onSubmit: SubmitHandler<ChangeReviewStatusForm> = (data) => {
@@ -586,7 +571,10 @@ function ChangeReviewStatusModal({
             })},
 
             {
-                onSettled: () => onCancel(),
+                onSettled: () => {
+                    queryClient.invalidateQueries({ queryKey: ['camperDataAdmin'] });
+                    onCancel()
+                },
                 onSuccess: () => {
                     emitToast(`Review status updated for ${selectedCampers.length} camper(s)`, ToastType.Success);
                 }

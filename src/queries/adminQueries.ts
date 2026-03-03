@@ -3,6 +3,7 @@ import { getCamp, listCamps } from "../api/apiCamp";
 import { generateCamperPdf, listCamperProfilesByCampId, observeCamperProfilesByCamp } from "../api/apiCamperProfile";
 import { useParams } from "react-router";
 import { useEffect } from "react";
+import { listCamperDataAdmin } from "../api/apiCamperTable";
 
 export function useListCampsQuery() {
     return useQuery({
@@ -23,6 +24,22 @@ export function useCamperProfilesQuery(campIdArg?: string | null, rotaryClubId?:
                 return [];
             }
             return listCamperProfilesByCampId(campId, rotaryClubId);
+        },
+    });
+}
+
+export function useCamperDataAdminQuery(campIdArg?: string | null) {
+    let { campId } = useParams();
+
+    campId = campIdArg ?? campId;
+
+    return useQuery({
+        queryKey: ['camperDataAdmin', { campId }],
+        queryFn: () => {
+            if (!campId) {
+                return [];
+            }
+            return listCamperDataAdmin(campId);
         },
     });
 }
