@@ -1,6 +1,6 @@
 import { getProperties, list, TransferProgressEvent, uploadData } from 'aws-amplify/storage';
 import { getUrl, remove } from 'aws-amplify/storage';
-import { client, checkErrors } from '.';
+import { client, checkErrors, MAX_FILE_SIZE } from '.';
 import { Schema } from '../../amplify/data/resource';
 
 export type DocumentTemplateSchemaType = Schema['DocumentTemplate']['type'];
@@ -224,8 +224,8 @@ export async function uploadCamperDocument(
 
     let result;
     if(file) {
-        if(file.size > 4000000) {
-            throw new Error("File size is too large (Maximum file size is 4MB)");
+        if(file.size > MAX_FILE_SIZE) {
+            throw new Error(`File size is too large (Maximum file size is ${MAX_FILE_SIZE / 1000000}MB)`);
         }
         
         if(existingEntry?.filepath) {

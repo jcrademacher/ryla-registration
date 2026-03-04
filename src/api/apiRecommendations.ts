@@ -2,7 +2,7 @@ import { client, checkErrors } from ".";
 import { Schema } from "../../amplify/data/resource";
 import { CamperProfileSchemaType } from "./apiCamperProfile";
 import { TransferProgressEvent, uploadData, remove } from 'aws-amplify/storage';
-
+import { MAX_FILE_SIZE } from ".";
 
 export type RecommendationSchemaType = Schema['Recommendation']['type'];
 export type CreateRecommendationSchemaType = Schema['Recommendation']['createType'];
@@ -57,8 +57,8 @@ export async function uploadRecommendationUnauthenticated(
     };
 
     if(file) {
-        if(file.size > 1000000) {
-            throw new Error("File size is too large (Maximum file size is 1MB)");
+        if(file.size > MAX_FILE_SIZE) {
+            throw new Error(`File size is too large (Maximum file size is ${MAX_FILE_SIZE / 1000000}MB)`);
         }
         
         if(existingEntry?.filepath) {

@@ -76,6 +76,12 @@ export function SubmitRecommendationPage() {
                 <>
                     <ThinSpacer />
                     <p>You are submitting a recommendation for {recommendation?.camperName}. Please upload your letter of recommendation as a PDF file below.</p>
+                    <p>
+                        <strong>
+                            Your letter is confidential and secure. It will only be visible to the rotary club reviewing this student and the RYLA directors.
+                            The student will not be able to see your letter.
+                        </strong>
+                    </p>
                     <FileInputGroup filepath={recommendation?.filepath} submitHandler={submitHandler} isPending={isPendingSubmitRecommendation} />
                     <br/>
                     {recommendation?.filepath && (
