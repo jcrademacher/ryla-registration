@@ -378,10 +378,6 @@ export const CampManagementPage = () => {
         mutateFilterState.mutate({
             campId: campId ?? "",
             filterState: newFilterStateObject,
-        }, {
-            onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: ['camp', campId] });
-            },
         });
     }
 

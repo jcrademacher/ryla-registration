@@ -1,6 +1,6 @@
-import { faEye, faFileAlt, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faFileAlt, faClockRotateLeft, faEnvelope } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Button, Dropdown, Form, Modal } from "react-bootstrap";
+import { Button, Dropdown, Form, Modal, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { Table as TanstackTable } from "@tanstack/table-core";
 import { CamperProfileRowData } from "../../api/apiCamperTable";
 import { useCampQuery } from "../../queries/adminQueries";
@@ -44,6 +44,15 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
     const navigate = useNavigate();
 
     const selectedCampers = table.getSelectedRowModel().rows.map(row => row.original);
+
+    const openMailto = (emails: string[]) => {
+        const valid = emails.filter(Boolean);
+        if (valid.length > 0) {
+            window.location.href = `mailto:?bcc=${valid.join(',')}`;
+        } else {
+            emitToast("No email addresses found for the selected group", ToastType.Warning);
+        }
+    };
 
     return (
         <>
@@ -113,6 +122,67 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                         </Dropdown.Item>
                     </Dropdown.Menu>
 
+                </Dropdown>
+                <Dropdown
+                    title="Emails"
+                >
+                    <Dropdown.Toggle
+                        size="sm"
+                    >
+                        <FontAwesomeIcon icon={faEnvelope} className="me-1" />
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu className="menu">
+                        <Dropdown.Item
+                            disabled={!hasSelectedRows}
+                            title="Emails the selected students"
+                            onClick={() => openMailto(
+                                selectedCampers.map(camper => camper.email)
+                            )}
+                        >
+                            Email selected students...
+                        </Dropdown.Item>
+
+                        <Dropdown.Divider />
+                        
+                        <Dropdown.Item
+                            onClick={() => openMailto(
+                                table.getCoreRowModel().rows.map(row => row.original.email)
+                            )}
+                        >
+                            Email all students...
+                        </Dropdown.Item>
+                        <OverlayTrigger
+                            placement="right"
+                            delay={{ show: 500, hide: 0 }}
+                            overlay={<Tooltip>Emails all students who have been admitted by their rotary club</Tooltip>}
+                        >
+                            <Dropdown.Item
+                                onClick={() => openMailto(
+                                    table.getCoreRowModel().rows
+                                        .filter(row => row.original.rotarianReview === "APPROVED")
+                                        .map(row => row.original.email)
+                                )}
+                            >
+                                Email admitted students...
+                            </Dropdown.Item>
+                        </OverlayTrigger>
+                        <OverlayTrigger
+                            placement="right"
+                            delay={{ show: 500, hide: 0 }}
+                            overlay={<Tooltip>Emails all students who have completed their applications</Tooltip>}
+                        >
+                            <Dropdown.Item
+                                onClick={() => openMailto(
+                                    table.getCoreRowModel().rows
+                                        .filter(row => row.original.applicationComplete)
+                                        .map(row => row.original.email)
+                                )}
+                            >
+                                Email applied students...
+                            </Dropdown.Item>
+                        </OverlayTrigger>
+                    </Dropdown.Menu>
                 </Dropdown>
                 
 
