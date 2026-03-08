@@ -1,4 +1,4 @@
-import { faEye, faFileAlt, faClockRotateLeft, faEnvelope } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faFileAlt, faClockRotateLeft, faEnvelope, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button, Dropdown, Form, Modal, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { Table as TanstackTable } from "@tanstack/table-core";
@@ -33,6 +33,8 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
     const [showChangeApplicationStatus, setShowChangeApplicationStatus] = useState(false);
     const [showChangeReviewStatus, setShowChangeReviewStatus] = useState(false);
 
+    const [showCampInfo, setShowCampInfo] = useState(false);
+
     const { data: camp } = useCampQuery();
     const {
         data: documentTemplates
@@ -57,6 +59,82 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
     return (
         <>
             <div className="camp-actions">
+                <Button
+                    size="sm"
+                    onClick={() => setShowCampInfo(true)}
+                >
+                    <FontAwesomeIcon icon={faCircleInfo} className="me-1" />
+                </Button>
+                <Dropdown
+                    title="Emails"
+                >
+                    <Dropdown.Toggle
+                        size="sm"
+                    >
+                        <FontAwesomeIcon icon={faEnvelope} className="me-1" />
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu className="menu">
+                        <Dropdown.Item
+                            disabled={!hasSelectedRows}
+                            title="Emails the selected students"
+                            onClick={() => openMailto(
+                                selectedCampers.map(camper => camper.email)
+                            )}
+                        >
+                            Email selected students...
+                        </Dropdown.Item>
+
+                        <Dropdown.Divider />
+                        
+                        <Dropdown.Item
+                            onClick={() => openMailto(
+                                table.getCoreRowModel().rows.map(row => row.original.email)
+                            )}
+                        >
+                            Email all students...
+                        </Dropdown.Item>
+                        <OverlayTrigger
+                            placement="right"
+                            delay={{ show: 500, hide: 0 }}
+                            overlay={<Tooltip>Emails all students who have been admitted by their rotary club</Tooltip>}
+                        >
+                            <Dropdown.Item
+                                onClick={() => openMailto(
+                                    table.getCoreRowModel().rows
+                                        .filter(row => row.original.rotarianReview === "APPROVED")
+                                        .map(row => row.original.email)
+                                )}
+                            >
+                                Email admitted students...
+                            </Dropdown.Item>
+                        </OverlayTrigger>
+                        <OverlayTrigger
+                            placement="right"
+                            delay={{ show: 500, hide: 0 }}
+                            overlay={<Tooltip>Emails all students who have completed their applications</Tooltip>}
+                        >
+                            <Dropdown.Item
+                                onClick={() => openMailto(
+                                    table.getCoreRowModel().rows
+                                        .filter(row => row.original.applicationComplete)
+                                        .map(row => row.original.email)
+                                )}
+                            >
+                                Email applied students...
+                            </Dropdown.Item>
+                        </OverlayTrigger>
+                    </Dropdown.Menu>
+                </Dropdown>
+                <div
+                    style={{
+                        width: "1px",
+                        background: "#dee2e6",
+                        height: "50%",
+                        alignSelf: "center",
+                        margin: "0 5px"
+                    }}
+                />
                 <Button
                     size="sm"
                     disabled={!hasSelectedRows}
@@ -123,67 +201,7 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                     </Dropdown.Menu>
 
                 </Dropdown>
-                <Dropdown
-                    title="Emails"
-                >
-                    <Dropdown.Toggle
-                        size="sm"
-                    >
-                        <FontAwesomeIcon icon={faEnvelope} className="me-1" />
-                    </Dropdown.Toggle>
-
-                    <Dropdown.Menu className="menu">
-                        <Dropdown.Item
-                            disabled={!hasSelectedRows}
-                            title="Emails the selected students"
-                            onClick={() => openMailto(
-                                selectedCampers.map(camper => camper.email)
-                            )}
-                        >
-                            Email selected students...
-                        </Dropdown.Item>
-
-                        <Dropdown.Divider />
-                        
-                        <Dropdown.Item
-                            onClick={() => openMailto(
-                                table.getCoreRowModel().rows.map(row => row.original.email)
-                            )}
-                        >
-                            Email all students...
-                        </Dropdown.Item>
-                        <OverlayTrigger
-                            placement="right"
-                            delay={{ show: 500, hide: 0 }}
-                            overlay={<Tooltip>Emails all students who have been admitted by their rotary club</Tooltip>}
-                        >
-                            <Dropdown.Item
-                                onClick={() => openMailto(
-                                    table.getCoreRowModel().rows
-                                        .filter(row => row.original.rotarianReview === "APPROVED")
-                                        .map(row => row.original.email)
-                                )}
-                            >
-                                Email admitted students...
-                            </Dropdown.Item>
-                        </OverlayTrigger>
-                        <OverlayTrigger
-                            placement="right"
-                            delay={{ show: 500, hide: 0 }}
-                            overlay={<Tooltip>Emails all students who have completed their applications</Tooltip>}
-                        >
-                            <Dropdown.Item
-                                onClick={() => openMailto(
-                                    table.getCoreRowModel().rows
-                                        .filter(row => row.original.applicationComplete)
-                                        .map(row => row.original.email)
-                                )}
-                            >
-                                Email applied students...
-                            </Dropdown.Item>
-                        </OverlayTrigger>
-                    </Dropdown.Menu>
-                </Dropdown>
+                
                 
 
             </div>
@@ -207,6 +225,11 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                 table={table}
                 onClose={() => setShowChangeReviewStatus(false)}
                 show={showChangeReviewStatus}
+            />
+            <CampInfoModal
+                table={table}
+                onClose={() => setShowCampInfo(false)}
+                show={showCampInfo}
             />
         </>
     )
@@ -694,6 +717,77 @@ function ChangeReviewStatusModal({
                     </SpinnerButton>
                 </Modal.Footer>
             </Form>
+        </Modal>
+    );
+}
+
+
+interface CampInfoModalProps {
+    table: TanstackTable<CamperProfileRowData>;
+    onClose: () => void;
+    show: boolean;
+}
+
+function CampInfoModal({
+    table,
+    onClose,
+    show
+}: CampInfoModalProps) {
+    const allRows = table.getCoreRowModel().rows.map(row => row.original);
+
+    const stats = useMemo(() => {
+        const total = allRows.length;
+        const profilesCompleted = allRows.filter(r => r.profileComplete).length;
+        const applicationsCompleted = allRows.filter(r => r.applicationComplete).length;
+        const admitted = allRows.filter(r => r.rotarianReview === "APPROVED").length;
+        const rejected = allRows.filter(r => r.rotarianReview === "REJECTED").length;
+        const readyForCamp = allRows.filter(r =>
+            r.profileComplete && r.applicationComplete && r.rotarianReview === "APPROVED" && r.documentsComplete
+        ).length;
+
+        return { total, profilesCompleted, applicationsCompleted, admitted, rejected, readyForCamp };
+    }, [allRows]);
+
+    return (
+        <Modal show={show} centered onHide={onClose}>
+            <Modal.Header closeButton>
+                <Modal.Title>Camp Information</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <div className="d-flex justify-content-center gap-5 mb-4">
+                    <div className="text-center">
+                        <div className="display-4 fw-bold">{stats.total}</div>
+                        <div className="text-muted">Total Accounts</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="display-4 fw-bold text-success">{stats.readyForCamp}</div>
+                        <div className="text-muted">Ready for Camp</div>
+                    </div>
+                </div>
+
+                <div className="d-flex flex-column gap-2">
+                    {([
+                        { label: 'Profiles completed', value: stats.profilesCompleted, info: 'Students who have filled out basic profile information' },
+                        { label: 'Applications submitted', value: stats.applicationsCompleted, info: 'Students who have submitted an application' },
+                        { label: 'Admitted students', value: stats.admitted, info: 'Students who have been admitted by their rotary club' },
+                        { label: 'Ready for camp', value: stats.readyForCamp, info: 'Students with a complete profile, submitted application, rotary club admission, and all documents completed' },
+                    ] as const).map(({ label, value, info }) => (
+                        <div key={label} className="d-flex justify-content-between align-items-center">
+                            <span className="d-flex align-items-center gap-1">
+                                {label}
+                                <OverlayTrigger
+                                    placement="right"
+                                    delay={{ show: 300, hide: 0 }}
+                                    overlay={<Tooltip>{info}</Tooltip>}
+                                >
+                                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" style={{ fontSize: '0.75rem', cursor: 'pointer' }} />
+                                </OverlayTrigger>
+                            </span>
+                            <span className="fw-bold">{value}</span>
+                        </div>
+                    ))}
+                </div>
+            </Modal.Body>
         </Modal>
     );
 }
