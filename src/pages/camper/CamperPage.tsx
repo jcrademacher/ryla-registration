@@ -370,7 +370,9 @@ function CampInformation() {
         <div>
             <p>RYLA {startDate.year} will take place from {formatDateFullWithTime(startDate)} to {formatDateFullWithTime(endDate)} at Camp Hinds in Raymond, ME.
                 <br />
-                <strong>Applications are due by {formatDateFullWithTime(applicationDeadline)}.</strong>
+                <strong>
+                    Please apply by {formatDateFullWithTime(applicationDeadline)} to meet our priority deadline. 
+                    After this date, applications will transition to rolling admissions until {startDate.toFormat("MMMM d")} or until space is no longer available.</strong>
             </p>
             <ul>
                 <li>You must complete the profile and application materials sections below for your application to be considered.</li>

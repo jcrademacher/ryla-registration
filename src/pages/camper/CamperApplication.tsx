@@ -22,6 +22,7 @@ import { useCreateRecommendationMutation, useResendRecommendationLinkMutation, u
 import { getCamperName, getFilepathFilename } from "../../utils/fields";
 import { DateTime } from "luxon";
 import { formatDateFull } from "../../utils/datetime";
+import { getCampApplicationStatus } from "../../utils/camp";
 
 
 export function CamperApplicationView() {
@@ -39,9 +40,6 @@ export function CamperApplicationView() {
     const endDate = useMemo(() => createFromISO(camperYear?.endDate ?? ""), [camperYear?.endDate]);
     const medicalFormDeadline = useMemo(() => createFromISO(camperYear?.medicalFormDeadline ?? ""), [camperYear?.medicalFormDeadline]);
     const numDays = useMemo(() => Math.round(endDate.diff(startDate, 'days').toObject().days ?? 0) + 1, [startDate, endDate]);
-
-    const applicationDeadline = useMemo(() => createFromISO(camperYear?.applicationDeadline ?? ""), [camperYear?.applicationDeadline]);
-    const appDeadlinePassed = useMemo(() => applicationDeadline.diffNow().toMillis() < 0, [applicationDeadline]);
 
     const { data: recs } = useRecommendationsQuery(authContext.attributes.sub);
 
@@ -71,9 +69,8 @@ export function CamperApplicationView() {
 
         console.log("submissionDate", submissionDate);
 
-        if(appDeadlinePassed) {
-            emitToast(`Application deadline has passed. You may not modify your application materials after this date. 
-                However, you can still update your profile and documents.`, ToastType.Error);
+        if(getCampApplicationStatus(camperYear) === "not-accepting") {
+            emitToast(`RYLA is not accepting applications at this time.`, ToastType.Error);
             return;
         }
 
@@ -101,7 +98,7 @@ export function CamperApplicationView() {
                 queryClient.invalidateQueries({ queryKey: ['camperProfile', authContext.attributes.sub] });
                 setTimeout(() => {
                     navigate('/camper/rotary-club-review');
-                }, 100);
+                }, 500);
             },
             onError: (error) => {
                 emitToast(`Error submitting application: ${error.message}`, ToastType.Error);

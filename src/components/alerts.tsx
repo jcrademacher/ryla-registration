@@ -28,7 +28,8 @@ export const PreDeadline = ({ deadline }: { deadline: DateTime }) => {
 export const PastDeadlineCamper = () => {
     return (
         <Alert variant="warning">
-            <FontAwesomeIcon icon={faCircleInfo} /> The application deadline has passed. 
+            <FontAwesomeIcon icon={faCircleInfo} /> The application deadline has passed. Applications
+            will still be accepted on a rolling basis until the start of camp. 
             If you have already been admitted, you may continue at the{' '}
             <Link to="/camper/important-documents">Important Documents</Link> tab to complete the final steps for registration.
         </Alert>
@@ -38,8 +39,9 @@ export const PastDeadlineCamper = () => {
 export const PastDeadlineRotarian = () => {
     return (
         <Alert variant="warning">
-            <FontAwesomeIcon icon={faCircleInfo} /> The application deadline has passed. 
-           You may still review applications and make decisions until the start of camp.
+            <FontAwesomeIcon icon={faCircleInfo} /> The application deadline has passed. Applications
+            will still be accepted on a rolling basis until the start of camp.
+            You may still review applications and make decisions until the start of camp.
         </Alert>
     );
 }
