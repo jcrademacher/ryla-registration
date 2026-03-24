@@ -744,6 +744,7 @@ function CampInfoModal({
     const allRows = table.getCoreRowModel().rows.map(row => row.original);
     const [clubFilter, setClubFilter] = useState<string>(CLUB_FILTER_ALL);
     const [chartMetric, setChartMetric] = useState<string>('admitted');
+    const [showNone, setShowNone] = useState<boolean>(false);
 
     const { data: rotaryClubs, isPending: isClubsLoading } = useListRotaryClubsQuery();
 
@@ -801,7 +802,9 @@ function CampInfoModal({
         for (const club of rotaryClubs ?? []) {
             clubGroups.push({ label: club.name, rows: allRows.filter(r => r.rotaryClub?.id === club.id) });
         }
-        clubGroups.push({ label: 'None', rows: allRows.filter(r => !r.rotaryClub?.id) });
+        if (showNone) {
+            clubGroups.push({ label: 'None', rows: allRows.filter(r => !r.rotaryClub?.id) });
+        }
 
         const labels = clubGroups.map(g => g.label);
 
@@ -817,14 +820,15 @@ function CampInfoModal({
         }
 
         const filterFn = singleMetricFilters[chartMetric] ?? (() => true);
+        const barColor = metricCategories.find(m => m.key === chartMetric)?.color ?? colors.primary;
         return {
             labels,
             datasets: [{
                 data: clubGroups.map(g => g.rows.filter(filterFn).length),
-                backgroundColor: colors.primary,
+                backgroundColor: barColor,
             }],
         };
-    }, [allRows, rotaryClubs, chartMetric]);
+    }, [allRows, rotaryClubs, chartMetric, showNone]);
 
     return (
         <Modal show={show} centered size="lg" onHide={onClose}>
@@ -855,6 +859,7 @@ function CampInfoModal({
                             { label: 'Profiles completed', value: stats.profilesCompleted, info: 'Students who have filled out basic profile information' },
                             { label: 'Applications submitted', value: stats.applicationsCompleted, info: 'Students who have submitted an application' },
                             { label: 'Admitted students', value: stats.admitted, info: 'Students who have been admitted by their rotary club' },
+                            { label: 'Rejected students', value: stats.rejected, info: 'Students who have been rejected by their rotary club' },
                             { label: 'Ready for camp', value: stats.readyForCamp, info: 'Students with a complete profile, submitted application, rotary club admission, and all documents completed' },
                     ] as const).map(({ label, value, info }) => (
                         <div key={label} className="d-flex justify-content-between align-items-center">
@@ -875,7 +880,7 @@ function CampInfoModal({
                 {/* <ThinSpacer/> */}
 
                     <div className="mt-3">
-                        <h6 className="fw-bold mb-2 text-center">Camp Statistics by Rotary Club</h6>
+                        <h6 className="fw-bold mb-2 text-center">Metrics by Club</h6>
                         <Form.Group className="mb-2 d-flex align-items-center gap-2">
                             <Form.Label className="mb-0 text-nowrap small">Metric:</Form.Label>
                             <Form.Select
@@ -892,6 +897,16 @@ function CampInfoModal({
                                 <option value="documentsCompleted">Documents Completed</option>
                                 <option value="readyForCamp">Ready for Camp</option>
                             </Form.Select>
+                            <label className="d-flex align-items-center gap-1 small mb-0 text-nowrap" style={{ cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={showNone}
+                                    onChange={(e) => setShowNone(e.target.checked)}
+                                    style={{ margin: 0 }}
+                                />
+                                Show None
+                            </label>
                         </Form.Group>
                         {isClubsLoading ? (
                             <Placeholder animation="glow">
@@ -910,7 +925,15 @@ function CampInfoModal({
                                         tooltip: { yAlign: 'center' },
                                     },
                                     scales: {
-                                        x: { stacked: chartMetric === 'allMetrics' },
+                                        x: {
+                                            stacked: chartMetric === 'allMetrics',
+                                            ticks: {
+                                                autoSkip: false,
+                                                maxRotation: 80,
+                                                minRotation: 45,
+                                                font: { size: 9 },
+                                            },
+                                        },
                                         y: {
                                             beginAtZero: true,
                                             ticks: { stepSize: 1 },
