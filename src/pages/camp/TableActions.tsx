@@ -1,10 +1,10 @@
 import { faEye, faFileAlt, faClockRotateLeft, faEnvelope, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Button, Dropdown, Form, Modal, OverlayTrigger, Tooltip } from "react-bootstrap";
+import { Button, Dropdown, Form, Modal, OverlayTrigger, Placeholder, Tooltip } from "react-bootstrap";
 import { Table as TanstackTable } from "@tanstack/table-core";
 import { CamperProfileRowData } from "../../api/apiCamperTable";
 import { useCampQuery } from "../../queries/adminQueries";
-import { useDocumentTemplatesByCampQuery, useCamperDocumentsQuery } from "../../queries/queries";
+import { useDocumentTemplatesByCampQuery, useCamperDocumentsQuery, useListRotaryClubsQuery } from "../../queries/queries";
 import { useContext, useMemo, useState } from "react";
 import { ConfirmationModal } from "../../components/modals";
 import { DocumentTemplateSchemaType } from "../../api/apiDocuments";
@@ -20,6 +20,11 @@ import { DateTime } from "luxon";
 import { getCamperName } from "../../utils/fields";
 import { SpinnerButton } from "../../utils/button";
 import { RotarianReviewDecision } from "../../api/apiRotarianReview";
+import { Bar } from "react-chartjs-2";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip as ChartTooltip, Legend } from "chart.js";
+import colors from "../../styles/colors.module.scss";
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTooltip, Legend);
 
 
 export function TableActions({ table }: { table: TanstackTable<CamperProfileRowData> }) {
@@ -728,49 +733,129 @@ interface CampInfoModalProps {
     show: boolean;
 }
 
+const CLUB_FILTER_ALL = '__all__';
+const CLUB_FILTER_NONE = '__none__';
+
 function CampInfoModal({
     table,
     onClose,
     show
 }: CampInfoModalProps) {
     const allRows = table.getCoreRowModel().rows.map(row => row.original);
+    const [clubFilter, setClubFilter] = useState<string>(CLUB_FILTER_ALL);
+    const [chartMetric, setChartMetric] = useState<string>('admitted');
+
+    const { data: rotaryClubs, isPending: isClubsLoading } = useListRotaryClubsQuery();
+
+    const filteredRows = useMemo(() => {
+        if (clubFilter === CLUB_FILTER_ALL) return allRows;
+        if (clubFilter === CLUB_FILTER_NONE) return allRows.filter(r => !r.rotaryClub?.id);
+        return allRows.filter(r => r.rotaryClub?.id === clubFilter);
+    }, [allRows, clubFilter]);
 
     const stats = useMemo(() => {
-        const total = allRows.length;
-        const profilesCompleted = allRows.filter(r => r.profileComplete).length;
-        const applicationsCompleted = allRows.filter(r => r.applicationComplete).length;
-        const admitted = allRows.filter(r => r.rotarianReview === "APPROVED").length;
-        const rejected = allRows.filter(r => r.rotarianReview === "REJECTED").length;
-        const readyForCamp = allRows.filter(r =>
+        const total = filteredRows.length;
+        const profilesCompleted = filteredRows.filter(r => r.profileComplete).length;
+        const applicationsCompleted = filteredRows.filter(r => r.applicationComplete).length;
+        const admitted = filteredRows.filter(r => r.rotarianReview === "APPROVED").length;
+        const rejected = filteredRows.filter(r => r.rotarianReview === "REJECTED").length;
+        const readyForCamp = filteredRows.filter(r =>
             r.profileComplete && r.applicationComplete && r.rotarianReview === "APPROVED" && r.documentsComplete
         ).length;
 
         return { total, profilesCompleted, applicationsCompleted, admitted, rejected, readyForCamp };
-    }, [allRows]);
+    }, [filteredRows]);
+
+    const metricCategories: { key: string; label: string; color: string }[] = [
+        { key: 'noProgress', label: 'No Progress', color: '#d9e6e2' },
+        { key: 'profilesCompleted', label: 'Profile Completed', color: '#b3cdc6' },
+        { key: 'applicationsCompleted', label: 'Application Submitted', color: '#8cb4a9' },
+        { key: 'rejected', label: 'Rejected', color: '#dc3545' },
+        { key: 'admitted', label: 'Admitted', color: '#408270' },
+        { key: 'documentsCompleted', label: 'Documents Completed', color: '#1a6954' },
+        { key: 'readyForCamp', label: 'Ready for Camp', color: '#003f2e' },
+    ];
+
+    const classifyCamper = (r: CamperProfileRowData): string => {
+        if (r.profileComplete && r.applicationComplete && r.rotarianReview === "APPROVED" && r.documentsComplete) return 'readyForCamp';
+        if (r.documentsComplete) return 'documentsCompleted';
+        if (r.rotarianReview === "APPROVED") return 'admitted';
+        if (r.rotarianReview === "REJECTED") return 'rejected';
+        if (r.applicationComplete) return 'applicationsCompleted';
+        if (r.profileComplete) return 'profilesCompleted';
+        return 'noProgress';
+    };
+
+    const singleMetricFilters: Record<string, (r: CamperProfileRowData) => boolean> = {
+        profilesCompleted: r => !!r.profileComplete,
+        applicationsCompleted: r => !!r.applicationComplete,
+        admitted: r => r.rotarianReview === "APPROVED",
+        rejected: r => r.rotarianReview === "REJECTED",
+        documentsCompleted: r => !!r.documentsComplete,
+        readyForCamp: r => !!r.profileComplete && !!r.applicationComplete && r.rotarianReview === "APPROVED" && !!r.documentsComplete,
+    };
+
+    const chartData = useMemo(() => {
+        const clubGroups: { label: string; rows: CamperProfileRowData[] }[] = [];
+
+        for (const club of rotaryClubs ?? []) {
+            clubGroups.push({ label: club.name, rows: allRows.filter(r => r.rotaryClub?.id === club.id) });
+        }
+        clubGroups.push({ label: 'None', rows: allRows.filter(r => !r.rotaryClub?.id) });
+
+        const labels = clubGroups.map(g => g.label);
+
+        if (chartMetric === 'allMetrics') {
+            const datasets = metricCategories.map(cat => ({
+                label: cat.label,
+                data: clubGroups.map(g => {
+                    return g.rows.filter(r => classifyCamper(r) === cat.key).length;
+                }),
+                backgroundColor: cat.color,
+            }));
+            return { labels, datasets };
+        }
+
+        const filterFn = singleMetricFilters[chartMetric] ?? (() => true);
+        return {
+            labels,
+            datasets: [{
+                data: clubGroups.map(g => g.rows.filter(filterFn).length),
+                backgroundColor: colors.primary,
+            }],
+        };
+    }, [allRows, rotaryClubs, chartMetric]);
 
     return (
-        <Modal show={show} centered onHide={onClose}>
+        <Modal show={show} centered size="lg" onHide={onClose}>
             <Modal.Header closeButton>
                 <Modal.Title>Camp Information</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-                <div className="d-flex justify-content-center gap-5 mb-4">
-                    <div className="text-center">
-                        <div className="display-4 fw-bold">{stats.total}</div>
-                        <div className="text-muted">Total Accounts</div>
-                    </div>
-                    <div className="text-center">
-                        <div className="display-4 fw-bold text-success">{stats.readyForCamp}</div>
-                        <div className="text-muted">Ready for Camp</div>
-                    </div>
-                </div>
+                <h6 className="fw-bold mb-2 text-center">Camp Statistics</h6>
+                <Form.Group className="mb-3 d-flex align-items-center gap-2">
+                    <Form.Label className="mb-0 text-nowrap small">Club:</Form.Label>
+                    <Form.Select
+                        size="sm"
+                        style={{ width: 'auto' }}
+                        value={clubFilter}
+                        onChange={(e) => setClubFilter(e.target.value)}
+                    >
+                        <option value={CLUB_FILTER_ALL}>All Clubs</option>
+                        <option value={CLUB_FILTER_NONE}>None</option>
+                        {rotaryClubs?.map(club => (
+                            <option key={club.id} value={club.id}>{club.name}</option>
+                        ))}
+                    </Form.Select>
+                </Form.Group>
 
-                <div className="d-flex flex-column gap-2">
-                    {([
-                        { label: 'Profiles completed', value: stats.profilesCompleted, info: 'Students who have filled out basic profile information' },
-                        { label: 'Applications submitted', value: stats.applicationsCompleted, info: 'Students who have submitted an application' },
-                        { label: 'Admitted students', value: stats.admitted, info: 'Students who have been admitted by their rotary club' },
-                        { label: 'Ready for camp', value: stats.readyForCamp, info: 'Students with a complete profile, submitted application, rotary club admission, and all documents completed' },
+                    <div className="d-flex flex-column gap-1">
+                        {([
+                            { label: 'Total accounts', value: stats.total, info: 'Total number of camper accounts' },
+                            { label: 'Profiles completed', value: stats.profilesCompleted, info: 'Students who have filled out basic profile information' },
+                            { label: 'Applications submitted', value: stats.applicationsCompleted, info: 'Students who have submitted an application' },
+                            { label: 'Admitted students', value: stats.admitted, info: 'Students who have been admitted by their rotary club' },
+                            { label: 'Ready for camp', value: stats.readyForCamp, info: 'Students with a complete profile, submitted application, rotary club admission, and all documents completed' },
                     ] as const).map(({ label, value, info }) => (
                         <div key={label} className="d-flex justify-content-between align-items-center">
                             <span className="d-flex align-items-center gap-1">
@@ -780,13 +865,64 @@ function CampInfoModal({
                                     delay={{ show: 300, hide: 0 }}
                                     overlay={<Tooltip>{info}</Tooltip>}
                                 >
-                                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" style={{ fontSize: '0.75rem', cursor: 'pointer' }} />
+                                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" style={{ fontSize: '0.7rem', cursor: 'pointer' }} />
                                 </OverlayTrigger>
                             </span>
                             <span className="fw-bold">{value}</span>
                         </div>
                     ))}
                 </div>
+                {/* <ThinSpacer/> */}
+
+                    <div className="mt-3">
+                        <h6 className="fw-bold mb-2 text-center">Camp Statistics by Rotary Club</h6>
+                        <Form.Group className="mb-2 d-flex align-items-center gap-2">
+                            <Form.Label className="mb-0 text-nowrap small">Metric:</Form.Label>
+                            <Form.Select
+                                size="sm"
+                                style={{ width: 'auto' }}
+                                value={chartMetric}
+                                onChange={(e) => setChartMetric(e.target.value)}
+                            >
+                                <option value="allMetrics">All Metrics</option>
+                                <option value="profilesCompleted">Profiles Completed</option>
+                                <option value="applicationsCompleted">Applications Completed</option>
+                                <option value="admitted">Admitted Students</option>
+                                <option value="rejected">Rejected Students</option>
+                                <option value="documentsCompleted">Documents Completed</option>
+                                <option value="readyForCamp">Ready for Camp</option>
+                            </Form.Select>
+                        </Form.Group>
+                        {isClubsLoading ? (
+                            <Placeholder animation="glow">
+                                <Placeholder xs={12} style={{ height: '200px' }} />
+                            </Placeholder>
+                        ) : (
+                            <Bar
+                                data={{
+                                    labels: chartData.labels,
+                                    datasets: chartData.datasets,
+                                }}
+                                options={{
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { display: chartMetric === 'allMetrics', position: 'bottom' },
+                                        tooltip: { yAlign: 'center' },
+                                    },
+                                    scales: {
+                                        x: { stacked: chartMetric === 'allMetrics' },
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: { stepSize: 1 },
+                                            stacked: chartMetric === 'allMetrics',
+                                            title: { display: true, text: 'Student Count' },
+                                        },
+                                    },
+                                }}
+                            />
+                        )}
+                    </div>
+
             </Modal.Body>
         </Modal>
     );

@@ -41,8 +41,8 @@ const TSHIRT_SIZE_ORDER: Record<string, number> = {
 };
 
 const tshirtSizeSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
-    const a = rowA.original[columnId];
-    const b = rowB.original[columnId];
+    const a = rowA.getValue<string>(columnId);
+    const b = rowB.getValue<string>(columnId);
 
     const aMissing = !a;
     const bMissing = !b;
@@ -55,8 +55,8 @@ const tshirtSizeSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) =
 };
 
 const undefinedLastSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
-    const a = rowA.original[columnId];
-    const b = rowB.original[columnId];
+    const a = rowA.getValue(columnId);
+    const b = rowB.getValue(columnId);
   
     const aMissing = !a;
     const bMissing = !b;
