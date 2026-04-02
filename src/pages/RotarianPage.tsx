@@ -198,7 +198,10 @@ function ActionsCell({ camperProfile }: { camperProfile: CamperProfileSchemaType
     const isCoordinator = authContext.groups.includes('COORDINATORS');
 
     const handleReview = (review: "APPROVED" | "REJECTED" | null) => {
-        if (!rotarianReview && !isErrorRotarianReview) {
+        if(!camperProfile.applicationComplete || !camperProfile.profileComplete) {
+            emitToast("Student has not completed their profile and application. You may not admit or reject them until they have done so.", ToastType.Error);
+        }
+        else if (!rotarianReview && !isErrorRotarianReview) {
             if (review === null) {
                 emitToast("Refusing to create review with null decision.", ToastType.Warning);
                 return;

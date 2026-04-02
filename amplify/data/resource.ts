@@ -125,6 +125,8 @@ const schema = a.schema({
         owner: a.string().authorization((allow) => [
             allow.owner(),
             allow.group("ADMINS"),
+            allow.group("COORDINATORS").to(["read"]),
+            allow.group("ROTARIANS").to(["read"]),
         ]),
         approved: a.boolean().default(true),
     })
