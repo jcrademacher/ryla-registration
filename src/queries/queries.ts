@@ -1,6 +1,7 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { getCamperProfile, getRotarianReviewFromCamperSub, getCamperYearByUserSub} from "../api/apiCamperProfile";
+import { getCamperProfile, getCamperYearByUserSub} from "../api/apiCamperProfile";
+import { getRotarianReview } from "../api/apiRotarianReview";
 import { getUser, getUserAttributes, getUserGroups, listAllUsers } from "../api/auth";
 import { getCamperApplicationFilename, getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
 import { getRotarianProfile, listRotarianProfilesByClub } from "../api/apiRotarianProfile";
@@ -56,7 +57,7 @@ function rotarianReviewQueryOptions(camperSub?: string | null) {
                 throw new Error("Camper sub is required. Check auth flow.");
             }
             else {
-                return await getRotarianReviewFromCamperSub(camperSub);
+                return await getRotarianReview(camperSub);
             }
         },
         enabled: !!camperSub

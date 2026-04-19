@@ -1,6 +1,5 @@
 import { client, checkErrors } from ".";
 import { Schema } from "../../amplify/data/resource";
-import { RotarianReviewSchemaType } from "./apiRotarianReview";
 import { CampSchemaType, getCamp } from "./apiCamp";
 
 export type CreateCamperProfileSchemaType = Schema['CamperProfile']['createType'];
@@ -100,22 +99,6 @@ export async function updateCamperProfile(camperProfile: UpdateCamperProfileSche
     checkErrors(retval.errors);
 
     return retval.data;
-}
-
-export async function getRotarianReviewFromCamperSub(userSub: string): Promise<RotarianReviewSchemaType | null> {
-    console.log("getRotarianReviewFromCamperSub", userSub);
-    
-    const profile = await client.models.CamperProfile.get({ userSub }, { authMode: "userPool" });
-    checkErrors(profile.errors);
-
-    console.log("profile", profile);
-
-    const review = await profile.data?.rotarianReview();
-    checkErrors(review?.errors);
-
-    console.log("review", review);
-
-    return review?.data ?? null;
 }
 
 export async function setUserAsCamper(userSub: string): Promise<Object | null> {
