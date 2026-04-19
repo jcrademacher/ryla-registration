@@ -137,7 +137,7 @@ export async function listDocumentTemplatesByCamp(campId: string): Promise<Docum
         { authMode: "userPool" });
     checkErrors(retval.errors);
 
-    const documentTemplates = await retval.data?.documentTemplates();
+    const documentTemplates = await retval.data?.documentTemplates({ authMode: "userPool" });
     checkErrors(documentTemplates?.errors);
     
     return documentTemplates?.data ?? null;

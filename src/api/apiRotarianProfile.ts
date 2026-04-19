@@ -43,7 +43,7 @@ export async function listRotarianProfilesByClub(rotaryClubId: string): Promise<
     }
 
     // Then fetch the rotarian profiles for this club
-    const retval = await club.rotarians();
+    const retval = await club.rotarians({ authMode: "userPool" });
     checkErrors(retval.errors);
 
     return retval.data;
