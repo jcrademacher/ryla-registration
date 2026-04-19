@@ -103,11 +103,17 @@ export async function updateCamperProfile(camperProfile: UpdateCamperProfileSche
 }
 
 export async function getRotarianReviewFromCamperSub(userSub: string): Promise<RotarianReviewSchemaType | null> {
+    console.log("getRotarianReviewFromCamperSub", userSub);
+    
     const profile = await client.models.CamperProfile.get({ userSub }, { authMode: "userPool" });
     checkErrors(profile.errors);
 
+    console.log("profile", profile);
+
     const review = await profile.data?.rotarianReview();
     checkErrors(review?.errors);
+
+    console.log("review", review);
 
     return review?.data ?? null;
 }
