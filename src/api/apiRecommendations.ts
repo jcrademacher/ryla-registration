@@ -9,7 +9,6 @@ export type CreateRecommendationSchemaType = Schema['Recommendation']['createTyp
 export type UpdateRecommendationSchemaType = Schema['Recommendation']['updateType'];
 
 export async function getRecommendations(camperProfile: CamperProfileSchemaType): Promise<RecommendationSchemaType[]> {
-    // console.log("camperProfile", camperProfile);
     const retval = await camperProfile.recommendation({ authMode: "userPool" });
     checkErrors(retval.errors);
 
@@ -62,7 +61,6 @@ export async function uploadRecommendationUnauthenticated(
         }
         
         if(existingEntry?.filepath) {
-            console.log("deleting existing file", existingEntry.filepath);
             await remove({
                 path: existingEntry.filepath
             });

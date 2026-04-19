@@ -15,9 +15,6 @@ export async function uploadCamperApplication(userSub: string, file: File, onPro
     const fileName = file.name;
     const fileType = file.type;
 
-
-    console.log("uploading file", file);
-
     const result = await uploadData({
         path: ({ identityId }) => `camper-documents/${identityId}/${fileName}`,
         data: file,
@@ -26,8 +23,6 @@ export async function uploadCamperApplication(userSub: string, file: File, onPro
             contentType: fileType,
         }
     }).result;
-
-    console.log("result", result);
 
     const retval = await client.models.CamperProfile.update({
         userSub: userSub,
@@ -47,7 +42,6 @@ export async function getCamperApplicationFilename(identityId?: string) {
 
     if (appFile) {
         result = await getCamperFileProperties(identityId, 'camper-application');
-        console.log('File Properties ', result);
         return result.metadata?.['user-filename'];
     }
     else {
@@ -102,7 +96,6 @@ export async function listCamperFiles(identityId?: string, subpath?: string) {
             path: ({ identityId }) => `camper-documents/${identityId}/${subpath}`
         });
     }
-    console.log('List result ', result);
     return result;
 }
 
@@ -120,7 +113,6 @@ export async function getUrlToCamperFile(identityId?: string, subpath?: string) 
         });
     }
     
-    console.log("Get url result", linkToStorageFile);
     return linkToStorageFile.url.toString();
 }
 
@@ -159,11 +151,9 @@ export async function uploadDocumentTemplate(
     documentTemplate.filepath = filepath;
 
     if(existingTemplate?.filepath) {
-        console.log("deleting existing file", existingTemplate.filepath);
         deleteDocument(existingTemplate.filepath);
     }
 
-    console.log("uploading file", file);
     // NEED TO DO THIS UPON DEPLOYMENT TO S3 BUCKET IN ORDER FOR METADATA TO BE AVAILABLE
     //https://docs.amplify.aws/react/build-a-backend/storage/extend-s3-resources/#for-manually-configured-s3-resources
     await uploadData({
@@ -229,7 +219,6 @@ export async function uploadCamperDocument(
         }
         
         if(existingEntry?.filepath) {
-            console.log("deleting existing file", existingEntry.filepath);
             deleteDocument(existingEntry.filepath);
         }
 
@@ -248,14 +237,12 @@ export async function uploadCamperDocument(
 
     let retval;
     if(existingEntry) {
-        console.log("updating existing document", document);
         retval = await client.models.CamperDocument.update({
             ...document,
             owner: document.camperUserSub
         }, { authMode: "userPool" });
     }
     else {
-        console.log("creating new document", document);
         retval = await client.models.CamperDocument.create({
             ...document,
             owner: document.camperUserSub

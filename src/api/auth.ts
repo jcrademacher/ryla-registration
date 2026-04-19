@@ -8,7 +8,6 @@ export type UserProfile = Schema["UserProfile"]["type"];
 export type ListUsersResult = Schema["ListUsersResult"]["type"];
 
 export function getUserGroups(session: AuthSession) {
-    // console.log("session", session);
     const groups = session?.tokens?.accessToken.payload['cognito:groups'] || [];
     return JSON.parse(JSON.stringify(groups));
 }

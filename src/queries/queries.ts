@@ -167,7 +167,6 @@ export function useGetUserEmailQuery(username: string | undefined) {
                 throw new Error("Username is required. Check auth flow.");
             }
             const user = await getUser(username);
-            console.log("user", user);
             const userEmail = user?.email;
 
             if(userEmail) {

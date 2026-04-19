@@ -84,7 +84,6 @@ export async function getCamperProfile(userSub: string): Promise<CamperProfileSc
 }
 
 export async function createCamperProfile(camperProfile: CreateCamperProfileSchemaType): Promise<CamperProfileSchemaType | null> {
-    console.log("Creating camper profile with data:", camperProfile);
     const retval = await client.models.CamperProfile.create(camperProfile, { authMode: "userPool" });
     checkErrors(retval.errors);
 
@@ -92,7 +91,6 @@ export async function createCamperProfile(camperProfile: CreateCamperProfileSche
 }
 
 export async function updateCamperProfile(camperProfile: UpdateCamperProfileSchemaType): Promise<CamperProfileSchemaType | null> {
-    console.log("Updating camper profile with data:", camperProfile);
     const retval = await client.models.CamperProfile.update(camperProfile, {
         authMode: "userPool"
     });
@@ -103,7 +101,6 @@ export async function updateCamperProfile(camperProfile: UpdateCamperProfileSche
 
 export async function setUserAsCamper(userSub: string): Promise<Object | null> {
     const retval = await client.mutations.setUserRoleToCamper({ userSub }, { authMode: "userPool" });
-    console.log("setUserAsCamper retval", retval);
     checkErrors(retval.errors);
 
     return retval.data;
@@ -139,8 +136,7 @@ export async function getCamperYearByUserSub(userSub: string): Promise<CampSchem
 
 export async function generateCamperPdf(camperSub: string): Promise<CamperProfileSchemaType | null> {
     const retval = await client.queries.generateCamperPdf({ camperSub });
-    console.log(retval);
-    // checkErrors(retval.errors);
+    checkErrors(retval.errors);
 
     return null;
 }
