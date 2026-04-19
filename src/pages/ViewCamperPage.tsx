@@ -10,7 +10,7 @@ import { formatPhoneNumber, getCamperAddress, getCamperBirthdate, getCamperName,
 import { Table, OverlayTrigger, Tooltip, Container } from "react-bootstrap";
 import { ThinSpacer } from "../components/ThinSpacer";
 import { PlaceholderElement } from "../components/PlaceholderElement";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faCheck, faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { DocumentTemplateSchemaType } from "../api/apiDocuments";
@@ -95,6 +95,10 @@ export function ViewCamperPage() {
     const { data: userEmail, isPending: isUserEmailPending } = useGetUserEmailQuery(camperSub);
     const { data: documentsComplete } = useDocumentStatusQuery(camperSub, camperProfile?.campId);
     const { data: rotaryClub, isPending: isRotaryClubPending } = useRotaryClubQuery(camperProfile?.rotaryClubId);
+
+    useEffect(() => {
+        console.log("rotarianReview", rotarianReview);
+    }, [rotarianReview]);
 
     const { data: documentTemplates } = useDocumentTemplatesByCampQuery(camperProfile?.campId);
 
