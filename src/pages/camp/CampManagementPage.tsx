@@ -54,6 +54,25 @@ const tshirtSizeSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) =
     return (TSHIRT_SIZE_ORDER[a] ?? 99) - (TSHIRT_SIZE_ORDER[b] ?? 99);
 };
 
+const dateSortingFn = (rowA: Row<CamperProfileRowData>, rowB: Row<CamperProfileRowData>, columnId: string) => {
+    const a = rowA.original[columnId as keyof CamperProfileRowData] as string | null | undefined;
+    const b = rowB.original[columnId as keyof CamperProfileRowData] as string | null | undefined;
+
+    const aMissing = !a;
+    const bMissing = !b;
+
+    if (aMissing && bMissing) return 0;
+    if (aMissing) return 1;
+    if (bMissing) return -1;
+
+    const aDate = createFromISO(a);
+    const bDate = createFromISO(b);
+
+    if (aDate < bDate) return -1;
+    if (aDate > bDate) return 1;
+    return 0;
+};
+
 const undefinedLastSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string) => {
     const a = rowA.getValue(columnId);
     const b = rowB.getValue(columnId);
@@ -137,7 +156,7 @@ const columns = [
     }, {
         id: 'applicationSubmittedAt',
         header: 'Submitted At',
-        // sortingFn: dateSortingFn,
+        sortingFn: dateSortingFn,
         sortDescFirst: true,
     }),
     columnHelper.accessor(row => row.email ?? undefined, {
@@ -170,6 +189,7 @@ const columns = [
     }, {
         id: 'birthdate',
         header: 'Birthdate',
+        sortingFn: dateSortingFn,
     }),
     columnHelper.accessor(row => row.gender ?? undefined, {
         id: 'gender',
