@@ -5,6 +5,7 @@ import { getRotarianReview } from "../api/apiRotarianReview";
 import { getUser, getUserAttributes, getUserGroups, listAllUsers } from "../api/auth";
 import { getCamperApplicationFilename, getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
 import { getRotarianProfile, listRotarianProfilesByClub } from "../api/apiRotarianProfile";
+import { listClubRotarians } from "../api/apiClubRotarians";
 import { listCamperDocuments } from "../api/apiDocuments";
 import { getRotaryClub, listRotaryClubs } from "../api/apiRotaryClub";
 import { getRecommendationUnauthenticated, getRecommendations } from "../api/apiRecommendations";
@@ -143,6 +144,20 @@ export function useRotarianProfilesByClubQuery(rotaryClubId?: string | null) {
             }
 
             return listRotarianProfilesByClub(rotaryClubId);
+        },
+        enabled: !!rotaryClubId,
+    });
+}
+
+export function useListClubRotariansQuery(rotaryClubId?: string | null) {
+    return useQuery({
+        queryKey: ["clubRotarians", rotaryClubId],
+        queryFn: () => {
+            if(!rotaryClubId) {
+                throw new Error("Rotary club ID is required");
+            }
+
+            return listClubRotarians(rotaryClubId);
         },
         enabled: !!rotaryClubId,
     });

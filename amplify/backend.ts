@@ -9,6 +9,7 @@ import { sendEmail } from "./functions/send-email/resource";
 import { sendEmailToAdmins } from "./functions/send-email-to-admins/resource";
 import { sendEmailToClubReps } from "./functions/send-email-to-club-reps/resource";
 import { notifyAdmittedCampers } from "./functions/notify-admitted-campers/resource";
+import { listClubRotarians } from "./functions/list-club-rotarians/resource";
 
 const backend = defineBackend({
     auth,
@@ -18,7 +19,8 @@ const backend = defineBackend({
     sendEmail,
     sendEmailToAdmins,
     sendEmailToClubReps,
-    notifyAdmittedCampers
+    notifyAdmittedCampers,
+    listClubRotarians
 });
 
 const lambdaFunction = backend.listUsers.resources.lambda;

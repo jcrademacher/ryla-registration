@@ -195,8 +195,11 @@
     justify-content: flex-start;
     background-color: colors.$secondary-dark;
     padding-left: 6px;
+    padding-right: 6px;
     border: 1px solid colors.$primary;
     border-radius: 10px 10px 0px 0px;
+    color: white;
+    font-size: 12px;
     // border-collapse: collapse;
 
     .btn {

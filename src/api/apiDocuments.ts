@@ -205,7 +205,8 @@ export async function deleteDocumentTemplate(doc: DocumentTemplateSchemaType) {
 export async function uploadCamperDocument(
     document: CreateCamperDocumentSchemaType, 
     file?: File,
-    onProgress?: (event: TransferProgressEvent) => void
+    onProgress?: (event: TransferProgressEvent) => void,
+    identityId?: string
 ) {
     const fileName = file?.name;
     const fileType = file?.type;
@@ -223,7 +224,7 @@ export async function uploadCamperDocument(
         }
 
         result = await uploadData({
-            path: ({ identityId }) => `camper-documents/${identityId}/${fileName}`,
+            path: identityId ? `camper-documents/${identityId}/${fileName}` : ({ identityId }) => `camper-documents/${identityId}/${fileName}`,
             data: file,
             options: {
                 onProgress,

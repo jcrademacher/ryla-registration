@@ -86,7 +86,7 @@ const undefinedLastSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string
   
     // Normal comparison (string example)
     return String(a).localeCompare(String(b));
-  };
+};
 
 interface StatusColumnProps {
     status: "APPROVED" | "PENDING" | "REJECTED" | boolean | null | undefined,

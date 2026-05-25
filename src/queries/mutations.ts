@@ -260,12 +260,13 @@ export function useUploadMultipleCamperDocumentsMutation() {
 export function useUploadCamperDocumentMutation() {
     return useMutation({
         mutationKey: ['uploadCamperDocument'],
-        mutationFn: ({ document, file, onProgress }: { 
+        mutationFn: ({ document, file, onProgress, identityId }: { 
             document: CreateCamperDocumentSchemaType, 
             file?: File,
-            onProgress?: (event: TransferProgressEvent) => void
+            onProgress?: (event: TransferProgressEvent) => void,
+            identityId?: string
         }) => {
-            return uploadCamperDocument(document, file, onProgress);
+            return uploadCamperDocument(document, file, onProgress, identityId);
         }
     });
 }

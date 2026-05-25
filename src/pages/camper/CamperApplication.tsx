@@ -313,7 +313,8 @@ export function CamperApplicationView() {
                                     upcoming weeks. This form will include any
                                     medication and/or allergies I may have and will also
                                     require completion by my primary care physician
-                                    and needs to be completed and mailed to RYLA {medformDateTimeStr ? `by ${medformDateTimeStr}` : ''}
+                                    and needs to be completed and mailed to RYLA{medformDateTimeStr ? ` by ${medformDateTimeStr}` : ''}. 
+                                    {camperYear?.mailingAddress && ` You must mail these forms to ${camperYear?.mailingAddress}.`}
                                 </span>
                             } />
                     </Form.Group>

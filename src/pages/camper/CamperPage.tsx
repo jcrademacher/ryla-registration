@@ -29,7 +29,7 @@ const ApplicationTabs = () => {
     const navigate = useNavigate();
 
     const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
-    const { data: documentsComplete } = useDocumentStatusQuery(camperProfile?.campId, authContext.attributes.sub);
+    const { data: documentsComplete } = useDocumentStatusQuery(authContext.attributes.sub, camperProfile?.campId);
 
 
     // Extract the last part of the pathname to determine active tab
@@ -77,7 +77,7 @@ const ApplicationTabs = () => {
             message: "Profile incomplete",
             color: "warning"
         };
-    }, [camperProfile, rotarianReview]);
+    }, [camperProfile, rotarianReview, documentsComplete]);
 
     const getStepState = (sectionKey: string) => {
         switch (sectionKey) {

@@ -11,7 +11,7 @@ export type RecommendationStatus = {
 };
 
 const camperTableSelectionSet = [
-    'userSub', 'email', 'firstName', 'middleInitial', 'lastName',
+    'userSub', 'identityId', 'email', 'firstName', 'middleInitial', 'lastName',
     'nickname', 'birthdate', 'phone', 'gender', 'address', 'city', 'state', 'zipcode',
     'highSchool', 'guidanceCounselorName', 'guidanceCounselorEmail', 'guidanceCounselorPhone',
     'dietaryRestrictions', 'dietaryRestrictionsNotes',

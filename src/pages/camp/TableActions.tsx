@@ -1,10 +1,10 @@
 import { faEye, faFileAlt, faClockRotateLeft, faEnvelope, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Button, Dropdown, Form, Modal, OverlayTrigger, Placeholder, Tooltip } from "react-bootstrap";
+import { Alert, Button, Dropdown, Form, Modal, OverlayTrigger, Placeholder, Tooltip } from "react-bootstrap";
 import { Table as TanstackTable } from "@tanstack/table-core";
 import { CamperProfileRowData } from "../../api/apiCamperTable";
 import { useCampQuery } from "../../queries/adminQueries";
-import { useDocumentTemplatesByCampQuery, useCamperDocumentsQuery, useListRotaryClubsQuery } from "../../queries/queries";
+import { useDocumentTemplatesByCampQuery, useCamperDocumentsQuery, useListRotaryClubsQuery, useCamperDocumentQuery } from "../../queries/queries";
 import { useContext, useMemo, useState } from "react";
 import { ConfirmationModal } from "../../components/modals";
 import { DocumentTemplateSchemaType } from "../../api/apiDocuments";
@@ -23,6 +23,9 @@ import { RotarianReviewDecision } from "../../api/apiRotarianReview";
 import { Bar } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip as ChartTooltip, Legend } from "chart.js";
 import colors from "../../styles/colors.module.scss";
+import { FileInputGroup } from "../../components/forms";
+import { TransferProgressEvent } from "aws-amplify/storage";
+import { PlaceholderElement } from "../../components/PlaceholderElement";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTooltip, Legend);
 
@@ -37,6 +40,8 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
 
     const [showChangeApplicationStatus, setShowChangeApplicationStatus] = useState(false);
     const [showChangeReviewStatus, setShowChangeReviewStatus] = useState(false);
+
+    const [showUploadDocument, setShowUploadDocument] = useState(false);
 
     const [showCampInfo, setShowCampInfo] = useState(false);
 
@@ -60,6 +65,9 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
             emitToast("No email addresses found for the selected group", ToastType.Warning);
         }
     };
+
+    const totalRows = table.getRowModel().rows.length;
+    const selectedCount = table.getSelectedRowModel().rows.length;
 
     return (
         <>
@@ -104,7 +112,7 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                             delay={{ show: 500, hide: 0 }}
                             overlay={<Tooltip>Emails all students who have been admitted by their rotary club</Tooltip>}
                         >
-                            <Dropdown.Item
+                            <Dropdown.Item  
                                 onClick={() => openMailto(
                                     table.getCoreRowModel().rows
                                         .filter(row => row.original.rotarianReview === "APPROVED")
@@ -203,11 +211,20 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                         >
                             Change document status...
                         </Dropdown.Item>
+                        <Dropdown.Item
+                            disabled={!hasOneSelectedRow}
+                            onClick={() => setShowUploadDocument(true)}
+                        >
+                            Upload document...
+                        </Dropdown.Item>
                     </Dropdown.Menu>
 
                 </Dropdown>
-                
-                
+
+                <div className="ms-auto d-flex align-items-center"
+                >
+                    <span>Showing {totalRows} student{totalRows !== 1 ? "s" : ""}{selectedCount > 0 && ( <> | {selectedCount} selected</> )}</span>
+                </div>
 
             </div>
 
@@ -235,6 +252,11 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                 table={table}
                 onClose={() => setShowCampInfo(false)}
                 show={showCampInfo}
+            />
+            <UploadDocumentModal
+                table={table}
+                onClose={() => setShowUploadDocument(false)}
+                show={showUploadDocument}
             />
         </>
     )
@@ -736,6 +758,124 @@ interface CampInfoModalProps {
 const CLUB_FILTER_ALL = '__all__';
 const CLUB_FILTER_NONE = '__none__';
 
+interface UploadDocumentModalProps {
+    table: TanstackTable<CamperProfileRowData>;
+    onClose: () => void;
+    show: boolean;
+}
+
+function UploadDocumentModal({
+    table,
+    onClose,
+    show,
+}: UploadDocumentModalProps) {
+    const selectedCamper = table.getSelectedRowModel().rows[0]?.original;
+
+    const { data: camp } = useCampQuery();
+    const { data: documentTemplates } = useDocumentTemplatesByCampQuery(camp?.id);
+    const uploadableTemplates = documentTemplates?.filter(doc => doc.type === "upload") ?? [];
+
+    const { mutate: uploadDocument, isPending } = useUploadCamperDocumentMutation();
+    const queryClient = useQueryClient();
+
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+
+    const {
+        data: existingDocument,
+        isLoading: isLoadingExistingDocument,
+        isError: isErrorExistingDocument,
+    } = useCamperDocumentQuery(selectedCamper?.userSub, selectedTemplateId || undefined);
+
+    const onCancel = () => {
+        // setSelectedTemplateId('');
+        onClose();
+    };
+
+    const submitHandler = (file: File, onProgress?: (event: TransferProgressEvent) => void, onSettled?: () => void) => {
+        if (!selectedCamper) {
+            emitToast("No camper selected", ToastType.Error);
+            return;
+        }
+
+        uploadDocument({
+            document: {
+                camperUserSub: selectedCamper.userSub,
+                templateId: selectedTemplateId,
+                received: true,
+                approved: true,
+            },
+            file,
+            onProgress,
+        }, {
+            onSuccess: () => {
+                emitToast(`Document uploaded for ${getCamperName(selectedCamper)}`, ToastType.Success);
+                queryClient.invalidateQueries({ queryKey: ['camperDataAdmin'] });
+                queryClient.invalidateQueries({ queryKey: ['camperDocument', selectedCamper.userSub] });
+            },
+            onSettled: () => {
+                onSettled?.();
+            },
+            onError: (error) => {
+                emitToast(`Failed to upload document: ${error.message}`, ToastType.Error);
+            }
+        });
+    };
+
+    return (
+        <Modal show={show} size="lg" centered onHide={onCancel}>
+            <Modal.Header closeButton>
+                <Modal.Title>Upload Document on Behalf of Camper</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <div className="mb-3">
+                    <strong>Camper:</strong> {getCamperName(selectedCamper)}
+                </div>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Document</Form.Label>
+                    <Form.Select
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    >
+                        <option value="" disabled>Choose a document...</option>
+                        {uploadableTemplates.map(doc => (
+                            <option key={doc.id} value={doc.id}>
+                                {doc.name}{doc.required ? ' (Required)' : ''}
+                            </option>
+                        ))}
+                    </Form.Select>
+                    {uploadableTemplates.length === 0 && (
+                        <Form.Text className="text-muted">
+                            No uploadable documents are configured for this camp.
+                        </Form.Text>
+                    )}
+                </Form.Group>
+
+                {selectedTemplateId && (
+                    <Form.Group className="mb-3">
+                        {isErrorExistingDocument ? (
+                            <Alert variant="danger" className="mb-2 py-2">
+                                Could not load the camper's existing document. Please try again.
+                            </Alert>
+                        ) : (
+                            <PlaceholderElement isLoading={isLoadingExistingDocument} props={{ xs: 8 }}>
+                                <FileInputGroup
+                                    filepath={existingDocument?.filepath}
+                                    submitHandler={submitHandler}
+                                    isPending={isPending}
+                                />
+                            </PlaceholderElement>
+                        )}
+                    </Form.Group>
+                )}
+            </Modal.Body>
+            <Modal.Footer>
+                <Button variant="primary" onClick={onCancel}>Done</Button>
+            </Modal.Footer>
+        </Modal>
+    );
+}
+
 function CampInfoModal({
     table,
     onClose,
@@ -950,3 +1090,4 @@ function CampInfoModal({
         </Modal>
     );
 }
+

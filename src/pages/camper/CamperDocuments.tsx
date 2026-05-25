@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { Badge } from "react-bootstrap";
-import { useDocumentTemplatesByCampQuery, useCamperProfileQuery, useUrlToDocumentQuery, useCamperDocumentQuery } from "../../queries/queries";
+import { useDocumentTemplatesByCampQuery, useCamperProfileQuery, useUrlToDocumentQuery, useCamperDocumentQuery, useCamperYearQuery } from "../../queries/queries";
 import { DocumentTemplateSchemaType } from "../../api/apiDocuments";
 import { AuthContext } from "../../App";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -30,7 +30,7 @@ const DocumentComponent: React.FC<DocumentComponentProps> = ({
 }) => {
     const { data: url } = useUrlToDocumentQuery(template.filepath ?? "");
     const { data: thisDocument, isPending: isPendingThisDocument } = useCamperDocumentQuery(camperProfile?.userSub, template.id);
-
+    const { data: camperYear } = useCamperYearQuery();
     const queryClient = useQueryClient();
 
     const { mutate: uploadDocument, isPending: isUploadingDocument } = useUploadCamperDocumentMutation();
@@ -83,7 +83,7 @@ const DocumentComponent: React.FC<DocumentComponentProps> = ({
             return <small className="text-muted">Must be uploaded here.</small>;
         }
         else if (template.type === 'mail') {
-            return <small className="text-muted">Must be mailed to the RYLA address.</small>;
+            return <small className="text-muted">Must be mailed to {camperYear?.mailingAddress ?? 'the RYLA address'}.</small>;
         }
     }
 
@@ -138,6 +138,8 @@ const DocumentComponent: React.FC<DocumentComponentProps> = ({
 export function CamperImportantDocuments() {
     const authContext = useContext(AuthContext);
 
+    const { data: camperYear } = useCamperYearQuery();
+
     const { data: camperProfile } = useCamperProfileQuery(authContext.attributes.sub);
     const { data: documentTemplates, isPending: isLoadingDocumentTemplates } = useDocumentTemplatesByCampQuery(camperProfile?.campId);
 
@@ -191,7 +193,7 @@ export function CamperImportantDocuments() {
                 </h5>
                 <ThinSpacer />
                 <p className="text-muted mb-3">These forms must be filled out and resubmitted to finalize your registration.
-                    Most can be uploaded here, but some forms must be mailed to the RYLA address.
+                    Most can be uploaded here, but some forms must be mailed to {camperYear?.mailingAddress ?? 'the RYLA address'}.
                 </p>
                 <ul>
                     <PlaceholderElement

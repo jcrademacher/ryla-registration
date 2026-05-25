@@ -11,6 +11,7 @@ import { generateCamperPdf } from "../functions/generate-camper-pdf/resource";
 import { sendEmailToAdmins } from "../functions/send-email-to-admins/resource";
 import { notifyAdmittedCampers } from "../functions/notify-admitted-campers/resource";
 import { sendEmailToClubReps } from "../functions/send-email-to-club-reps/resource";
+import { listClubRotarians } from "../functions/list-club-rotarians/resource";
 // import { generateInviteCode } from "../functions/generate-invite-code/resource";
 // import { selectUserRole } from "../functions/select-user-role/resource";
 
@@ -164,6 +165,8 @@ const schema = a.schema({
         viewState: a.ref('CamperProfileViewState'),
         filterState: a.ref('CamperProfileFilterState'),
         documentTemplates: a.hasMany('DocumentTemplate', 'campId'),
+        mailingAddress: a.string(),
+        physicalAddress: a.string(),
     })
         .authorization((allow) => [
             allow.group("ADMINS").to(["create", "read", "update", "delete"]),
@@ -287,6 +290,25 @@ const schema = a.schema({
         verified: a.boolean().required(),
     }),
 
+    RotarianProfileWithGroup: a.customType({
+        userSub: a.id().required(),
+        firstName: a.string(),
+        lastName: a.string(),
+        email: a.string().required(),
+        rotaryClubId: a.id(),
+        approved: a.boolean(),
+        group: a.enum(AUTH_GROUPS),
+    }),
+
+    listClubRotarians: a
+        .query()
+        .arguments({
+            rotaryClubId: a.id().required(),
+        })
+        .authorization((allow) => [allow.group("ADMINS"), allow.group("COORDINATORS")])
+        .handler(a.handler.function(listClubRotarians))
+        .returns(a.ref('RotarianProfileWithGroup').required().array()),
+
     ListUsersResult: a.customType({
         items: a.ref('UserProfile').required().array().required(),
         nextToken: a.string()
@@ -392,6 +414,7 @@ const schema = a.schema({
     allow.resource(generateCamperPdf).to(["query"]),
     allow.resource(notifyAdmittedCampers).to(["query", "mutate"]),
     allow.resource(sendEmailToClubReps).to(["query"]),
+    allow.resource(listClubRotarians).to(["query"]),
 ]);
 
 export type Schema = ClientSchema<typeof schema>;

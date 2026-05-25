@@ -15,3 +15,51 @@
 .camper-app-details-table-tbody {
     width: 80%;
 }
+
+.view-camper-page {
+
+    .card-header {
+        padding: 0.5rem 0.75rem;
+        background-color: #f8f9fa;
+    }
+
+    .card-body {
+        padding: 0.75rem;
+    }
+
+    .view-camper-info-row {
+        margin-bottom: 0.5rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .view-camper-info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #6c757d;
+        margin-bottom: 0.1rem;
+    }
+
+    .view-camper-info-value {
+        font-size: 0.9rem;
+        word-break: break-word;
+    }
+
+    .view-camper-coordinator-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+
+        li {
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #e9ecef;
+
+            &:last-child {
+                border-bottom: none;
+            }
+        }
+    }
+}

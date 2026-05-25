@@ -24,6 +24,7 @@ type EditCampForm = {
     endDate: string;
     applicationDeadline: string;
     applicationOpenDate: string;
+    mailingAddress: string;
 }
 
 type DocumentTemplateForm = {
@@ -156,6 +157,7 @@ export const CampSettings = () => {
             endDate: formatDateHTML(createEDT(camp?.endDate ?? "")),
             applicationDeadline: formatDateHTML(createEDT(camp?.applicationDeadline ?? "")),
             applicationOpenDate: formatDateHTML(createEDT(camp?.applicationOpenDate ?? "")),
+            mailingAddress: camp?.mailingAddress ?? "",
         }
     });
 
@@ -178,6 +180,7 @@ export const CampSettings = () => {
             endDate: endDate || undefined,
             applicationDeadline: applicationDeadline || undefined,
             applicationOpenDate: applicationOpenDate || undefined,
+            mailingAddress: data.mailingAddress,
         }
 
         updateCamp(newCamp, {
@@ -339,6 +342,27 @@ export const CampSettings = () => {
                             <Form.Control.Feedback type="invalid">
                                 {errors.applicationDeadline?.message || 'Application deadline is required'}
                             </Form.Control.Feedback>
+                        </Form.Group>
+                    </Col>
+                </BsRow>
+                <br/>
+                <BsRow>
+                    
+                    <Col xs={12}>
+                        <Form.Group>
+                            <Form.Label>Mailing Address</Form.Label>
+                            <Form.Control
+                                type="text"
+                                {...register('mailingAddress', { required: true })}
+                                isInvalid={!!errors.mailingAddress}
+                            />
+                            
+                            <Form.Control.Feedback type="invalid">
+                                {errors.mailingAddress?.message || 'Mailing address is required'}
+                            </Form.Control.Feedback>
+                            <Form.Text>
+                                The address where students should mail their forms to.
+                            </Form.Text>
                         </Form.Group>
                     </Col>
                 </BsRow>
