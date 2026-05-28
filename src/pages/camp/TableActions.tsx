@@ -805,6 +805,7 @@ function UploadDocumentModal({
                 approved: true,
             },
             file,
+            identityId: selectedCamper.identityId,
             onProgress,
         }, {
             onSuccess: () => {

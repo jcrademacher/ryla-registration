@@ -2,6 +2,7 @@ import { getProperties, list, TransferProgressEvent, uploadData } from 'aws-ampl
 import { getUrl, remove } from 'aws-amplify/storage';
 import { client, checkErrors, MAX_FILE_SIZE } from '.';
 import { Schema } from '../../amplify/data/resource';
+import { getCamperProfile } from './apiCamperProfile';
 
 export type DocumentTemplateSchemaType = Schema['DocumentTemplate']['type'];
 export type CreateDocumentTemplateSchemaType = Schema['DocumentTemplate']['createType'];
@@ -15,8 +16,18 @@ export async function uploadCamperApplication(userSub: string, file: File, onPro
     const fileName = file.name;
     const fileType = file.type;
 
+    let camper = await getCamperProfile(userSub);
+
+    if(camper?.applicationFilepath) {
+        deleteDocument(camper.applicationFilepath);
+    }
+
+    if(!camper?.identityId) {
+        throw new Error("Camper identity ID is required");
+    }
+
     const result = await uploadData({
-        path: ({ identityId }) => `camper-documents/${identityId}/${fileName}`,
+        path: `camper-documents/${camper.identityId}/${fileName}`,
         data: file,
         options: {
             onProgress,
@@ -33,40 +44,6 @@ export async function uploadCamperApplication(userSub: string, file: File, onPro
 
     return result;
 }
-
-export async function getCamperApplicationFilename(identityId?: string) {
-    let result;
-
-    const { items } = await listCamperFiles(identityId, 'camper-application');
-    const appFile = items.find(item => item.path.includes('camper-application'));
-
-    if (appFile) {
-        result = await getCamperFileProperties(identityId, 'camper-application');
-        return result.metadata?.['user-filename'];
-    }
-    else {
-        return null;
-    }
-}
-
-// export async function getExtCamperApplicationFilename(identityId: string | undefined) {
-//     if (!identityId) {
-//         throw new Error("Identity ID is required");
-//     }
-//     else {
-//         const { items } = await listCamperFiles(identityId);
-
-//         const appFile = items.find(item => item.path.includes('camper-application'));
-
-//         if (appFile) {
-//             const filename = await getCamperApplicationFilename(identityId);
-//             return filename ?? null;
-//         }
-//         else {
-//             return null;
-//         }
-//     }
-// }
 
 export async function getCamperFileProperties(identityId?: string, subpath?: string) {
     let result;

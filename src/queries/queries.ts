@@ -69,21 +69,6 @@ export function useRotarianReviewQuery(camperSub?: string | null) {
     return useQuery(rotarianReviewQueryOptions(camperSub));
 }
 
-export function useCamperApplicationFilenameQuery(userSub: string | undefined) {
-    return useQuery({
-        queryKey: ["camperApplication", userSub],
-        queryFn: () => getCamperApplicationFilename(),
-    });
-}
-
-export function useExtCamperApplicationFilenameQuery(identityId?: string) {
-    return useQuery({
-        queryKey: ["extCamperApplication", identityId],
-        queryFn: () => getCamperApplicationFilename(identityId),
-        enabled: !!identityId
-    });
-}
-
 export function useUrlToCamperFileQuery(identityId?: string, subpath?: string, enabled: boolean = false) {
     return useQuery({
         queryKey: ["urlToCamperFile", identityId, subpath],
