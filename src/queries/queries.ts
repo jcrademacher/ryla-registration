@@ -3,7 +3,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { getCamperProfile, getCamperYearByUserSub} from "../api/apiCamperProfile";
 import { getRotarianReview } from "../api/apiRotarianReview";
 import { getUser, getUserAttributes, getUserGroups, listAllUsers } from "../api/auth";
-import { getCamperApplicationFilename, getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
+import { getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
 import { getRotarianProfile, listRotarianProfilesByClub } from "../api/apiRotarianProfile";
 import { listClubRotarians } from "../api/apiClubRotarians";
 import { listCamperDocuments } from "../api/apiDocuments";
