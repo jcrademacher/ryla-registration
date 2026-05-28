@@ -1,4 +1,4 @@
-import { getProperties, list, TransferProgressEvent, uploadData } from 'aws-amplify/storage';
+import { TransferProgressEvent, uploadData } from 'aws-amplify/storage';
 import { getUrl, remove } from 'aws-amplify/storage';
 import { client, checkErrors, MAX_FILE_SIZE } from '.';
 import { Schema } from '../../amplify/data/resource';
