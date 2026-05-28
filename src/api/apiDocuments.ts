@@ -45,37 +45,6 @@ export async function uploadCamperApplication(userSub: string, file: File, onPro
     return result;
 }
 
-export async function getCamperFileProperties(identityId?: string, subpath?: string) {
-    let result;
-    if(identityId) {
-        result = await getProperties({
-            path: `camper-documents/${identityId}/${subpath}`
-        });
-    }
-    else {
-        result = await getProperties({
-            path: ({ identityId }) => `camper-documents/${identityId}/${subpath}`
-        });
-    }
-    return result;
-}
-
-export async function listCamperFiles(identityId?: string, subpath?: string) {
-
-    let result;
-    if(identityId) {
-        result = await list({
-            path: `camper-documents/${identityId}/${subpath}`
-        });
-    }
-    else {
-        result = await list({
-            path: ({ identityId }) => `camper-documents/${identityId}/${subpath}`
-        });
-    }
-    return result;
-}
-
 export async function getUrlToCamperFile(identityId?: string, subpath?: string) {
     let linkToStorageFile;
 
