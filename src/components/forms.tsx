@@ -1,8 +1,10 @@
 import { Form, ProgressBar } from "react-bootstrap";
 import { useUrlToDocumentQuery } from "../queries/queries";
 import { useForm } from "react-hook-form";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, ReactNode } from "react";
 import { TransferProgressEvent } from "aws-amplify/storage";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
 
 // interface TextInputGroupProps<T extends FieldValues> {
 //     key: string;
@@ -29,10 +31,14 @@ type DocumentUploadForm = {
 interface FileInputGroupProps {
     filepath?: string | null;
     submitHandler: (file: File, onProgress?: (event: TransferProgressEvent) => void, onSettled?: () => void) => void;
+    deleteCallback?: () => void;
     isPending: boolean;
+    isAdmin?: boolean;
+    defaultViewFile?: boolean;
+    children?: ReactNode;
 }
 
-export function FileInputGroup({ filepath, submitHandler, isPending }: FileInputGroupProps) {
+export function FileInputGroup({ filepath, submitHandler, isPending, isAdmin, defaultViewFile, children }: FileInputGroupProps) {
     const [isResubmitting, setIsResubmitting] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -62,28 +68,52 @@ export function FileInputGroup({ filepath, submitHandler, isPending }: FileInput
         }
     }, [fileWatch]);
 
+    let uploadButton = (
+        <div className="d-flex align-items-center gap-3">
+            <a href="#" title="Upload/Replace" onClick={(e) => { e.preventDefault(); setIsResubmitting(true); }}><FontAwesomeIcon icon={faArrowUpFromBracket} /></a>
+            {/* <a href="#" title="Delete" onClick={(e) => { e.preventDefault(); deleteCallback?.(); }}>
+                <FontAwesomeIcon icon={faXmark}/>
+            </a> */}
+            {children}
+        </div>
+    );
+
     if (filepath && !isResubmitting && !isPending) {
-        return <small className="text-muted"> 
-            <a href={urlToUploadedDocument} target="_blank">{filepath?.split("/").pop()}</a> (<a href="#" onClick={() => setIsResubmitting(true)}>Replace</a>)
-            <br/>
-        </small>;
+        return <div className="text-muted flex-grow-1 d-flex gap-2 align-items-center justify-content-between"> 
+            <a href={urlToUploadedDocument} target="_blank">{filepath?.split("/").pop()}</a> 
+            {isAdmin && uploadButton}
+        </div>;
     }
-    return (
-        <Form>
-            <div className="d-flex align-items-center gap-2">
-                <div>
-                    <Form.Control
-                        accept=".pdf,.doc,.docx"
-                        type="file"
-                        size="sm" {...register("file")}
-                    />
-                    {uploadProgress > 0 && <ProgressBar now={uploadProgress} label={`${uploadProgress.toFixed(0)}%`} />}
+    
+
+    if((isResubmitting || defaultViewFile) && isAdmin) {
+        return (
+            <Form>
+                <div className="d-flex align-items-center justify-content-between gap-2 flex-grow-1">
+                    <div>
+                        <Form.Control
+                            accept=".pdf,.doc,.docx"
+                            type="file"
+                            size="sm" {...register("file")}
+                        />
+                        {uploadProgress > 0 && <ProgressBar now={uploadProgress} label={`${uploadProgress.toFixed(0)}%`} />}
+                    </div>
+                    
+                    {isResubmitting && <div className="text-muted">
+                        <a href="#" onClick={(e) => { e.preventDefault(); setIsResubmitting(false); }}>Cancel</a> 
+                    </div>}
                 </div>
-                
-                {isResubmitting && <small className="text-muted">
-                    <a href="#" onClick={() => setIsResubmitting(false)}>Cancel</a> 
-                </small>}
+            </Form>
+        );
+    }
+
+    return (
+        <div className="text-danger flex-grow-1 d-flex align-items-center justify-content-between">
+            <div>
+                {/* <FontAwesomeIcon icon={faXmark} className="me-1" /> */}
+                Missing
             </div>
-        </Form>
+            {isAdmin && uploadButton}
+        </div>
     );
 }

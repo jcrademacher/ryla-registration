@@ -196,18 +196,3 @@ export function useUpdateRotaryClubMutation() {
     });
 }
 
-
-
-// export function useUploadCamperDocumentMutation() {
-//     return useMutation({
-//         mutationKey: ['uploadCamperDocument'],
-//         mutationFn: ({ document, file, onProgress }: { 
-//             document: CreateCamperDocumentSchemaType, 
-//             file?: File,
-//             onProgress?: (event: TransferProgressEvent) => void
-//         }) => {
-//             return uploadCamperDocument(document, file, onProgress);
-//         }
-//     });
-// }
-

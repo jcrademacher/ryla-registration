@@ -5,6 +5,28 @@ import { getRotaryClub } from "./apiRotaryClub";
 export type CreateRotarianProfileSchemaType = Schema['RotarianProfile']['createType'];
 export type UpdateRotarianProfileSchemaType = Schema['RotarianProfile']['updateType'];
 export type RotarianProfileSchemaType = Schema['RotarianProfile']['type'];
+export type RotarianProfileWithGroupType = Schema['RotarianProfileWithGroup']['type'];
+
+export async function listRotariansWithGroup(rotaryClubId?: string | null, limit?: number | null, nextToken?: string | null): Promise<{ items: RotarianProfileWithGroupType[], nextToken?: string | null}> {
+
+    let response;
+    if(rotaryClubId) {
+        response = await client.queries.listClubRotarians(
+            { rotaryClubId, limit: limit ?? undefined, nextToken: nextToken ?? undefined },
+            { authMode: "userPool" }
+        );
+    }
+    else {
+        response = await client.queries.listAllRotarians(
+            { limit: limit ?? undefined, nextToken: nextToken ?? undefined },
+            { authMode: "userPool" }
+        );
+    }
+
+    checkErrors(response.errors);
+    return response.data ?? { items: [], nextToken: undefined }
+}
+
 
 export async function createRotarianProfile(rotarianProfile: CreateRotarianProfileSchemaType): Promise<RotarianProfileSchemaType | null> {
     const retval = await client.models.RotarianProfile.create(rotarianProfile, { authMode: "userPool" });

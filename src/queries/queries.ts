@@ -4,8 +4,7 @@ import { getCamperProfile, getCamperYearByUserSub} from "../api/apiCamperProfile
 import { getRotarianReview } from "../api/apiRotarianReview";
 import { getUser, getUserAttributes, getUserGroups, listAllUsers } from "../api/auth";
 import { getCamperDocument, getDocumentStatus, getUrlToCamperFile, getUrlToDocument, listDocumentTemplatesByCamp } from "../api/apiDocuments";
-import { getRotarianProfile, listRotarianProfilesByClub } from "../api/apiRotarianProfile";
-import { listClubRotarians } from "../api/apiClubRotarians";
+import { getRotarianProfile, listRotarianProfilesByClub, listRotariansWithGroup } from "../api/apiRotarianProfile";
 import { listCamperDocuments } from "../api/apiDocuments";
 import { getRotaryClub, listRotaryClubs } from "../api/apiRotaryClub";
 import { getRecommendationUnauthenticated, getRecommendations } from "../api/apiRecommendations";
@@ -134,29 +133,27 @@ export function useRotarianProfilesByClubQuery(rotaryClubId?: string | null) {
     });
 }
 
-export function useListClubRotariansQuery(rotaryClubId?: string | null) {
+export function useListRotariansWithGroupQuery(rotaryClubId?: string | null) {
     return useQuery({
         queryKey: ["clubRotarians", rotaryClubId],
         queryFn: () => {
-            if(!rotaryClubId) {
-                throw new Error("Rotary club ID is required");
-            }
-
-            return listClubRotarians(rotaryClubId);
+            return listRotariansWithGroup(rotaryClubId);
         },
-        enabled: !!rotaryClubId,
+        select: (data) => data.items,
     });
 }
 
-// export function useListCamperProfilesByRotaryClubQuery(rotaryClub: string | null) {
-//     return useQuery({
-//         queryKey: ["camperProfilesByRotaryClub", rotaryClub],
-//         queryFn: () => {
-//             return listCamperProfilesByRotaryClub(rotaryClub);
-//         },
-//         refetchInterval: 60*1000
-//     });
-// }
+export function useListRotariansInfiniteQuery(rotaryClubId?: string | null) {
+    return useInfiniteQuery({
+        queryKey: ["rotariansWithGroup", rotaryClubId],
+        queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+            return listRotariansWithGroup(rotaryClubId, null, pageParam)
+        },
+        initialPageParam: null, 
+        getNextPageParam: (lastPage) => lastPage.nextToken,
+        getPreviousPageParam: (prevPage) => prevPage.nextToken,
+    });
+}
 
 
 export function useGetUserEmailQuery(username: string | undefined) {
@@ -269,7 +266,7 @@ export function useCamperDocumentQuery(camperUserSub?: string | null, templateId
 
 export function useDocumentStatusQuery(camperUserSub?: string | null, campId?: string | null) {
     return useQuery({
-        queryKey: ["documentStatus", campId, camperUserSub],
+        queryKey: ["documentStatus", camperUserSub, campId],
         queryFn: () => {
             if(!campId) {
                 throw new Error("Camp id is required");

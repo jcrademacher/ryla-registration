@@ -39,6 +39,46 @@ export async function updateRecommendation(recommendation: UpdateRecommendationS
     return retval.data;
 }
 
+export async function uploadRecommendation(
+    recId: string,
+    camperUserSub: string, 
+    file: File,
+    onProgress?: (event: TransferProgressEvent) => void
+) {
+    const fileName = file.name;
+    const fileType = file.type;
+
+    if(file.size > MAX_FILE_SIZE) {
+        throw new Error(`File size is too large (Maximum file size is ${MAX_FILE_SIZE / 1000000}MB)`);
+    }
+
+    let existingEntry = await getRecommendation(recId);
+    if(!existingEntry) {
+        throw new Error("Recommendation not found.");
+    }
+
+    if(existingEntry.filepath) {
+        await remove({ path: existingEntry.filepath });
+    }
+
+    const result = await uploadData({
+        path: () => `camper-recommendations/${camperUserSub}/${fileName}`,
+        data: file,
+        options: {
+            onProgress,
+            contentType: fileType,
+        }
+    }).result;
+
+    const retval = await client.models.Recommendation.update({
+        id: recId,
+        filepath: result.path
+    }, { authMode: "userPool" });
+
+    checkErrors(retval.errors);
+    return retval.data;
+}
+
 export async function uploadRecommendationUnauthenticated(
     recId: string,
     camperUserSub: string, 

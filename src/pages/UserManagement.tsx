@@ -1,6 +1,6 @@
-import { useContext, useMemo, useState, useEffect } from 'react';
-import { Table, Spinner, Alert, Dropdown, Modal, Button, Form, Card, Placeholder } from 'react-bootstrap';
-import { faCheck, faChevronDown, faChevronUp, faEllipsisV, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
+import { useContext, useState } from 'react';
+import { Spinner, Alert, Dropdown, Modal, Button, Form, Card } from 'react-bootstrap';
+import { faCheck, faEllipsisV, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useListUsersQuery, useListGroupRequestsQuery, useListRotaryClubsQuery } from '../queries/queries';
 import { FormModal } from '../components/modals';
@@ -12,7 +12,7 @@ import { SpinnerButton } from '../utils/button';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { AUTH_GROUPS, AuthGroup } from '../../amplify/auth/utils';
 import { PlaceholderElement } from '../components/PlaceholderElement';
-import { useReactTable, createColumnHelper, getCoreRowModel, flexRender, RowData, getSortedRowModel, SortingState, PaginationState, getPaginationRowModel } from '@tanstack/react-table';
+import { createColumnHelper } from '@tanstack/react-table';
 import { DateTime } from 'luxon';
 import { UserProfile } from '../api/auth';
 import { GroupRequestSchemaType } from '../api/apiGroupRequest';
@@ -20,7 +20,7 @@ import { createFromISO } from '../utils/datetime';
 import { emitToast, ToastType } from '../utils/notifications';
 import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { Container } from 'react-bootstrap';
-import { DataTablePagination } from '../components/table';
+import { SearchablePaginatedTable } from '../components/table';
 
 type ChangeGroupFormType = {
     groupName: string | null;
@@ -179,93 +179,39 @@ function GroupRequestCarousel({ groupRequests }: GroupRequestCarouselProps) {
     );
 }
 
-type UserRowData = UserProfile;
+const columnHelper = createColumnHelper<UserProfile>();
 
-declare module '@tanstack/table-core' {
-    interface TableMeta<TData extends RowData> {
-        changeGroup: (user: UserProfile) => void;
-        deleteUser: (user: UserProfile) => void;
-    }
-}
-
-const columnHelper = createColumnHelper<UserRowData>();
-
-const columns = [
+const userColumns = [
     columnHelper.accessor('email', {
-        header: () => "Email",
-        cell: (props) => props.getValue(),
+        header: "Email",
     }),
     columnHelper.accessor('groupNames', {
-        header: () => "Groups",
+        header: "Groups",
         cell: (props) => props.getValue().join(", "),
     }),
     columnHelper.accessor('createdAt', {
-        header: () => "Created At",
+        header: "Created At",
         cell: (props) => createFromISO(props.getValue()).toLocaleString(DateTime.DATETIME_MED),
     }),
     columnHelper.accessor('verified', {
-        header: () => "Verified",
+        header: "Verified",
         cell: (props) => props.getValue() ? "Yes" : "No",
-    }),
-    columnHelper.display({
-        id: "actions",
-        header: "",
-        cell: (props) => <ActionsCell
-            user={props.row.original}
-            changeGroup={props.table.options.meta?.changeGroup}
-            deleteUser={props.table.options.meta?.deleteUser} />,
-
-        size: 1,
     }),
 ]
 
 export function UserManagement() {
-    const [sorting, setSorting] = useState<SortingState>([{
-        id: 'createdAt',
-        desc: true,
-    }]);
-
-    const [pagination, setPagination] = useState<PaginationState>({
-        pageIndex: 0,
-        pageSize: 25,
-    });
-
-    const { 
-        data: usersData, 
-        isLoading, 
-        error, 
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage
-    } = useListUsersQuery();
-
+    const usersQuery = useListUsersQuery();
     const { data: groupRequestsData } = useListGroupRequestsQuery();
     const queryClient = useQueryClient();
 
-    // Update page tokens when data changes
-    // useEffect(() => {
-    //     if (usersData?.nextToken && !pageTokens[pagination.pageIndex + 1]) {
-    //         setPageTokens([...pageTokens, usersData.nextToken]);
-    //     }
-    // }, [usersData?.nextToken]);
-
-    // Modal state - only one set of modals for all users
     const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [showChangeGroup, setShowChangeGroup] = useState(false);
 
-    // Mutations
     const { mutate: setUserGroup, isPending: isChangingGroup } = useSetUserGroupMutation();
     const { mutate: deleteUser, isPending: isDeletingUser } = useDeleteUserMutation();
 
-    // Forms - only created when modals are open
-    const changeGroupForm = useForm<ChangeGroupFormType>({
-        defaultValues: {
-            groupName: "",
-        }
-    });
-
+    const changeGroupForm = useForm<ChangeGroupFormType>({ defaultValues: { groupName: "" } });
     const deleteUserForm = useForm<DeleteUserFormType>();
 
     const handleCloseDeleteModal = () => {
@@ -280,185 +226,50 @@ export function UserManagement() {
         changeGroupForm.reset();
     };
 
-
     const handleDeleteUser: SubmitHandler<DeleteUserFormType> = (data) => {
-
         if (data.email !== selectedUser?.email) {
             emitToast('The email address entered does not match the selected user. Aborting.', ToastType.Error);
             return;
         }
-
         if (!selectedUser?.userSub) {
             emitToast('No user selected. Aborting.', ToastType.Error);
             return;
         }
-
         deleteUser({ userSub: selectedUser.userSub }, {
-            onSettled: () => {
-                handleCloseDeleteModal();
-            },
-            onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: ["users"] });
-            }
+            onSettled: () => handleCloseDeleteModal(),
+            onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
         });
     };
 
     const handleChangeGroup: SubmitHandler<ChangeGroupFormType> = (data) => {
-        if (!selectedUser?.userSub) {
-            return;
-        }
-
-        setUserGroup({ userSub: selectedUser.userSub, group: data.groupName as AuthGroup },
-            {
-                onSettled: () => {
-                    handleCloseChangeGroupModal();
-                },
-                onSuccess: () => {
-                    queryClient.invalidateQueries({ queryKey: ["users"] });
-                    emitToast(`Updated group`, ToastType.Success);
-                }
-            }
-        );
-    }
-
-    const tableData = useMemo(() => usersData?.pages.flatMap((page) => page.items) ?? [], [usersData?.pages]);
-
-    const table = useReactTable({
-        data: tableData,
-        columns: columns,
-        getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        state: {
-            sorting,
-            pagination
-        },
-        onSortingChange: setSorting,
-        onPaginationChange: setPagination,
-        autoResetPageIndex: false,
-        meta: {
-            changeGroup: (user: UserProfile) => { setSelectedUser(user); setShowChangeGroup(true); },
-            deleteUser: (user: UserProfile) => { setSelectedUser(user); setShowConfirmDelete(true); },
-        }
-    });
-
-    useEffect(() => {
-        if(hasNextPage && table.getRowModel().rows.length < pagination.pageSize && !isFetchingNextPage) {
-            fetchNextPage();
-        }
-    }, [pagination.pageIndex, pagination.pageSize]);
-
-    const TableBody = () => (
-        <tbody>
-            {table.getRowModel().rows.map((row) => (
-                <tr
-                    key={row.id}
-                >
-                    {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                    ))}
-                </tr>
-            ))}
-            {(isLoading || isFetchingNextPage) && (
-                <tr>
-                    {table.getVisibleLeafColumns().map((column) => (
-                        <td key={column.id}>
-                            <Placeholder animation="glow">
-                                <Placeholder xs={12} />
-                            </Placeholder>
-                        </td>
-                    ))}
-                </tr>
-            )}
-        </tbody>
-    );
-
-    if (error) {
-        return (
-            <Container className="user-management">
-                <h3>User Management</h3>
-                <Alert variant="danger" className="mt-3">
-                    Error loading users: {error.message}
-                </Alert>
-            </Container>
-        );
-    }
+        if (!selectedUser?.userSub) return;
+        setUserGroup({ userSub: selectedUser.userSub, group: data.groupName as AuthGroup }, {
+            onSettled: () => handleCloseChangeGroupModal(),
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ["users"] });
+                emitToast(`Updated group`, ToastType.Success);
+            },
+        });
+    };
 
     return (
         <Container className="user-management">
             <h3>User Management</h3>
             <p>Manage user accounts, roles, and permissions.</p>
 
-            <GroupRequestCarousel
-                groupRequests={groupRequestsData ?? []}
+            <GroupRequestCarousel groupRequests={groupRequestsData ?? []} />
+
+            <SearchablePaginatedTable<UserProfile>
+                query={usersQuery}
+                columns={userColumns}
+                renderActions={(user) => (
+                    <ActionsCell
+                        user={user}
+                        changeGroup={(u) => { setSelectedUser(u); setShowChangeGroup(true); changeGroupForm.reset(); }}
+                        deleteUser={(u) => { setSelectedUser(u); setShowConfirmDelete(true); deleteUserForm.reset(); }}
+                    />
+                )}
             />
-
-            <Table bordered hover>
-                <thead>
-                    {table.getHeaderGroups().map(headerGroup => {
-                        return (
-                            <tr key={headerGroup.id}>
-                                {headerGroup.headers.map(header => ( // map over the headerGroup headers array
-                                    <th
-                                        key={header.id}
-                                        colSpan={header.colSpan}
-                                        onClick={header.column.getToggleSortingHandler()}
-                                        style={{ cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
-                                    >
-                                        {flexRender(header.column.columnDef.header, header.getContext())}
-                                        {header.column.getIsSorted() ? (header.column.getIsSorted() === 'asc' ?
-                                            <FontAwesomeIcon icon={faChevronUp} className="ms-2" /> :
-                                            <FontAwesomeIcon icon={faChevronDown} className="ms-2" />) : ''}
-
-                                    </th>
-                                ))}
-                            </tr>
-                        )
-                    })}
-                </thead>
-                <TableBody/>
-            </Table>
-
-            <DataTablePagination 
-                table={table} 
-                fetchNextPage={fetchNextPage}
-                hasNextPage={hasNextPage}
-                isFetchingNextPage={isFetchingNextPage}
-            />
-
-            {/* <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
-
-                <div className="d-flex align-items-center gap-2">
-                    <Button
-                        variant="link"
-                        className="text-secondary p-1"
-                        onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
-                        style={{ minWidth: '32px' }}
-                    >
-                        <FontAwesomeIcon icon={faChevronLeft} />
-                    </Button>
-                    <span>
-                        Page {pagination.pageIndex + 1}
-                    </span>
-                    <Button
-                        variant="link"
-                        className="text-secondary p-1"
-                        onClick={() => {
-                            if(!table.getCanNextPage()) {
-                                fetchNextPage();
-                            }
-                            table.nextPage();
-                        }}
-                        disabled={!hasNextPage && !table.getCanNextPage() || isFetchingNextPage}
-                        style={{ minWidth: '32px' }}
-                    >
-                        <FontAwesomeIcon icon={faChevronRight} />
-                    </Button>
-                </div>
-            </div> */}
 
             {showConfirmDelete && (
                 <FormModal

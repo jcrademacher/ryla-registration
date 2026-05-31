@@ -82,7 +82,18 @@ export function SubmitRecommendationPage() {
                             The student will not be able to see your letter.
                         </strong>
                     </p>
-                    <FileInputGroup filepath={recommendation?.filepath} submitHandler={submitHandler} isPending={isPendingSubmitRecommendation} />
+                    <div className="d-flex flex-direction-row gap-3">
+                        <div>
+                        <FileInputGroup 
+                            defaultViewFile={true}
+                            filepath={recommendation?.filepath} 
+                            submitHandler={submitHandler} 
+                            isPending={isPendingSubmitRecommendation}
+                            isAdmin={true}
+                        />
+                        </div>
+                    </div>
+                    
                     <br/>
                     {recommendation?.filepath && (
                         <Alert variant="success">

@@ -130,8 +130,25 @@ function StatusHeader({ title, helpText }: { title: string, helpText?: string })
         </OverlayTrigger>
     )
 }
+    
+function RowIndexCell() {
+    return (<span ref={(node: HTMLSpanElement | null) => {
+        if (node) {
+            const rowIndex = node.closest('td')?.dataset.row;
+            node.textContent = rowIndex != null ? String(Number(rowIndex) + 1) : '';
+        }
+    }} />);
+}
 
 const columns = [
+    columnHelper.display({
+        id: 'rowIndex',
+        header: '#',
+        cell: () => <RowIndexCell />,
+        enableSorting: false,
+        size: 40,
+        meta: { className: 'row-index-cell' },
+    }),
     columnHelper.accessor('profileComplete', {
         header: () => <StatusHeader title="P" helpText="Camper has completed basic information" />,
         cell: (props) => <StatusColumn status={props.getValue()} />,

@@ -12,32 +12,38 @@ export type CamperDocumentSchemaType = Schema['CamperDocument']['type'];
 export type CreateCamperDocumentSchemaType = Schema['CamperDocument']['createType'];
 export type UpdateCamperDocumentSchemaType = Schema['CamperDocument']['updateType'];
 
-export async function uploadCamperApplication(userSub: string, file: File, onProgress?: (event: TransferProgressEvent) => void) {
-    const fileName = file.name;
-    const fileType = file.type;
+export async function uploadCamperApplication(userSub: string, file: File | null, onProgress?: (event: TransferProgressEvent) => void) {
+    
 
     let camper = await getCamperProfile(userSub);
-
-    if(camper?.applicationFilepath) {
-        deleteDocument(camper.applicationFilepath);
-    }
 
     if(!camper?.identityId) {
         throw new Error("Camper identity ID is required");
     }
 
-    const result = await uploadData({
-        path: `camper-documents/${camper.identityId}/${fileName}`,
-        data: file,
-        options: {
-            onProgress,
-            contentType: fileType,
-        }
-    }).result;
+    if(camper?.applicationFilepath) {
+        deleteDocument(camper.applicationFilepath);
+    }
+
+    let result;
+
+    if(file !== null) {
+        const fileName = file.name;
+        const fileType = file.type;
+
+        result = await uploadData({
+            path: `camper-documents/${camper.identityId}/${fileName}`,
+            data: file,
+            options: {
+                onProgress,
+                contentType: fileType,
+            }
+        }).result;
+    }
 
     const retval = await client.models.CamperProfile.update({
         userSub: userSub,
-        applicationFilepath: result.path
+        applicationFilepath: result?.path ?? null
     }, { authMode: "userPool" });
     
     checkErrors(retval.errors);
@@ -227,6 +233,34 @@ export async function updateCamperDocumentStatus(
     
     checkErrors(retval.errors);
     return retval.data;
+}
+
+export async function rejectCamperDocument(camperUserSub: string, templateId: string, message?: string) {
+    const retval = await client.mutations.rejectCamperDocument({
+        camperUserSub,
+        templateId,
+        message
+    }, { authMode: "userPool" });
+    checkErrors(retval.errors);
+    return JSON.parse(retval.data as string ?? "{}");
+}
+
+export async function approveCamperDocument(camperUserSub: string, templateId: string) {
+    const retval = await client.mutations.approveCamperDocument({
+        camperUserSub,
+        templateId
+    }, { authMode: "userPool" });
+    checkErrors(retval.errors);
+    return JSON.parse(retval.data as string ?? "{}");
+}
+
+export async function markMissingCamperDocument(camperUserSub: string, templateId: string) {
+    const retval = await client.mutations.markMissingCamperDocument({
+        camperUserSub,
+        templateId
+    }, { authMode: "userPool" });
+    checkErrors(retval.errors);
+    return JSON.parse(retval.data as string ?? "{}");
 }
 
 export async function getDocumentStatus(camperUserSub: string, campId: string): Promise<boolean> {

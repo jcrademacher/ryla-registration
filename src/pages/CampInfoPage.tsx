@@ -38,6 +38,21 @@ export function CampInfoPage() {
         <Container>
             <h3>{camp.name || "Camp Information"}</h3>
 
+            {(camp.physicalAddress || camp.mailingAddress) && (
+                <ListGroup className="mt-3 mb-4">
+                    {camp.physicalAddress && (
+                        <ListGroup.Item>
+                            <strong>Camp Address:</strong> {camp.physicalAddress}
+                        </ListGroup.Item>
+                    )}
+                    {camp.mailingAddress && (
+                        <ListGroup.Item>
+                            <strong>Mailing Address:</strong> {camp.mailingAddress}
+                        </ListGroup.Item>
+                    )}
+                </ListGroup>
+            )}
+
             <h5 className="mt-4 mb-3">Important Dates</h5>
             <ListGroup className="mb-4">
                 <ListGroup.Item>

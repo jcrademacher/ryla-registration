@@ -3,7 +3,7 @@ import { UseAuthenticator } from '@aws-amplify/ui-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Dropdown, Offcanvas } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
-import { faBars, faCampground, faQuestion, faUser, faPuzzlePiece, faUsers } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faCampground, faQuestion, faUser, faPuzzlePiece, faUsers, faUserGroup } from '@fortawesome/free-solid-svg-icons';
 import { useState } from 'react';
 import { useListGroupRequestsQuery } from '../queries/queries';
 
@@ -112,16 +112,20 @@ export function NavOffcanvas({ show }: { show: boolean }) {
                     <FontAwesomeIcon icon={faPuzzlePiece} className="icon" />
                     Rotary Clubs
                 </Offcanvas.Header>
-                <Offcanvas.Header className="admin-select-item" onClick={() => { closeNavigate('/admin/user-management') }}>
-                    <FontAwesomeIcon icon={faUsers} className="icon" />
+                <Offcanvas.Header className="admin-select-item" onClick={() => { closeNavigate('/admin/rotarians') }}>
+                    <FontAwesomeIcon icon={faUserGroup} className="icon" />
                     <span style={{ position: 'relative', display: 'inline-block' }}>
-                        User Management
+                        Rotarians
                         {groupRequests && groupRequests.length > 0 && (
                             <span style={notificationBadgeStyle}>
                                 {groupRequests.length}
                             </span>
                         )}
                     </span>
+                </Offcanvas.Header>
+                <Offcanvas.Header className="admin-select-item" onClick={() => { closeNavigate('/admin/user-management') }}>
+                    <FontAwesomeIcon icon={faUsers} className="icon" />
+                    User Management
                 </Offcanvas.Header>
             </Offcanvas>
 

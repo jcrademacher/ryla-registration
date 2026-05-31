@@ -11,7 +11,9 @@ import {
     uploadCamperApplication, 
     uploadCamperDocument,
     CreateCamperDocumentSchemaType,
-    updateCamperDocumentStatus
+    rejectCamperDocument,
+    approveCamperDocument,
+    markMissingCamperDocument
 } from "../api/apiDocuments.ts";
 import { remove, TransferProgressEvent } from "aws-amplify/storage";
 import { updateRotarianProfile, UpdateRotarianProfileSchemaType } from "../api/apiRotarianProfile.ts";
@@ -19,7 +21,7 @@ import { AuthGroup } from "../../amplify/auth/utils.ts";
 import { setUserGroup, deleteUser } from "../api/auth.ts";
 import { deleteRotarianProfile } from "../api/apiRotarianProfile.ts";
 import { createRotarianReview, deleteRotarianReview, getRotarianReview, RotarianReviewDecision, updateRotarianReview } from "../api/apiRotarianReview.ts";
-import { createRecommendation, updateRecommendation, UpdateRecommendationSchemaType, uploadRecommendationUnauthenticated } from "../api/apiRecommendations.ts";
+import { createRecommendation, updateRecommendation, UpdateRecommendationSchemaType, uploadRecommendation, uploadRecommendationUnauthenticated } from "../api/apiRecommendations.ts";
 import { sendEmailToClubReps, sendRecommendationLinkEmail } from "../api/apiEmail.ts";
 import { CreateGroupRequestSchemaType, createGroupRequest } from "../api/apiGroupRequest.ts";
 import { DateTime } from "luxon";
@@ -105,7 +107,7 @@ export function useCreateProfileMutation() {
 export function useUploadCamperApplicationMutation() {
     return useMutation({
         mutationKey: ['uploadCamperApplication'],
-        mutationFn: ({ file, userSub, onProgress }: { file: File, userSub: string | undefined, onProgress?: (event: TransferProgressEvent) => void }) => {
+        mutationFn: ({ file, userSub, onProgress }: { file: File | null, userSub: string | undefined, onProgress?: (event: TransferProgressEvent) => void }) => {
             if (!userSub) {
                 throw new Error("User ID missing. Check auth flow.");
             }
@@ -248,15 +250,6 @@ export function useUpdateRotarianReviewMutation() {
     });
 }
 
-export function useUploadMultipleCamperDocumentsMutation() {
-    return useMutation({
-        mutationKey: ['uploadMultipleCamperDocuments'],
-        mutationFn: ({ objects, onProgress }: { objects: { document: CreateCamperDocumentSchemaType, file?: File }[], onProgress?: (event: TransferProgressEvent) => void }) => {
-            return Promise.all(objects.map(object => uploadCamperDocument(object.document, object.file, onProgress)));
-        }
-    });
-}
-
 export function useUploadCamperDocumentMutation() {
     return useMutation({
         mutationKey: ['uploadCamperDocument'],
@@ -267,7 +260,7 @@ export function useUploadCamperDocumentMutation() {
             identityId?: string
         }) => {
             return uploadCamperDocument(document, file, onProgress, identityId);
-        }
+        },
     });
 }
 
@@ -277,13 +270,23 @@ export function useUpdateCamperDocumentStatusMutation() {
         mutationFn: ({ 
             camperUserSub, 
             templateId, 
-            updates 
+            action,
+            message
         }: { 
             camperUserSub: string, 
             templateId: string, 
-            updates: { approved?: boolean; received?: boolean }
+            action: "approve" | "reject" | "missing",
+            message?: string
         }) => {
-            return updateCamperDocumentStatus(camperUserSub, templateId, updates);
+            if(action === "missing") {
+                return markMissingCamperDocument(camperUserSub, templateId);
+            }
+            else if(action === "approve") {
+                return approveCamperDocument(camperUserSub, templateId);
+            }
+            else {
+                return rejectCamperDocument(camperUserSub, templateId, message);
+            }
         }
     });
 }
@@ -334,6 +337,20 @@ export function useResendRecommendationLinkMutation() {
 
             return sendRecommendationLinkEmail(recId, emailAddress, name);
         }
+    });
+}
+
+export function useUploadRecommendationMutation() {
+    return useMutation({
+        mutationKey: ['uploadRecommendation'],
+        mutationFn: ({ recId, camperUserSub, file, onProgress }: { 
+            recId: string, 
+            camperUserSub: string, 
+            file: File, 
+            onProgress?: (event: TransferProgressEvent) => void 
+        }) => {
+            return uploadRecommendation(recId, camperUserSub, file, onProgress);
+        },
     });
 }
 

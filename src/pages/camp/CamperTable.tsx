@@ -6,6 +6,7 @@ import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { flexRender } from "@tanstack/react-table";
 import { CamperProfileRowData } from "../../api/apiCamperTable";
 import { useNavigate } from "react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 
 interface CamperTableProps {
@@ -13,54 +14,203 @@ interface CamperTableProps {
     isPending: boolean;
 }
 
+// A cell is identified by its position in the visible grid (row index, column index).
+type CellCoord = { r: number; c: number };
+// A range is a rectangular block defined by the anchor (where it started) and the focus (current edge).
+type CellRange = { anchor: CellCoord; focus: CellCoord };
+
+const cellKey = (r: number, c: number) => `${r}:${c}`;
+
 export function CamperTable({ table, isPending }: CamperTableProps) {
 
     const navigate = useNavigate();
 
-    const TableBody = () => {
-        return (
-            <tbody>
-                {table.getRowModel().rows.map((row) => (
-                    <tr
-                        key={row.id}
-                        // onDoubleClick={(e) => {
-                        //     e.preventDefault();
-                        //     e.stopPropagation();
-                        //     navigate(`/camper-view/${row.original.userSub}`);
-                        // }}
-                        onMouseDown={(e) => {
-                            // e.preventDefault();
-                            // e.stopPropagation();
-                            if(e.detail === 1) {
-                                if (e.shiftKey) {
-                                    // Shift+click: add to selection (toggle this row)
-                                    row.getToggleSelectedHandler()(e);
-                                } else {
-                                    // Regular click: deselect all others and select only this row
-                                    const isCurrentlySelected = row.getIsSelected();
-                                    table.resetRowSelection();
-                                    if (!isCurrentlySelected) {
-                                        row.toggleSelected(true);
-                                    }
-                                }
-                            }
-                            else if(e.detail === 2) {
-                                navigate(`/camper-view/${row.original.userSub}`);
-                            }
-                        }}
-                        className={row.getIsSelected() ? 'selected' : ''}
-                    >
-                        {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                        ))}
-                    </tr>
-                ))}
-            </tbody>
-        );
-    };
+    const rows = table.getRowModel().rows;
 
+    // The list of selected rectangular ranges. The last range is the "active" one
+    // that shift-click and drag extend; its anchor cell gets the bold bounding box.
+    const [ranges, setRanges] = useState<CellRange[]>([]);
+    // Mirror of `ranges` for synchronous reads inside event handlers (state is async).
+    const rangesRef = useRef<CellRange[]>([]);
+    const isDraggingRef = useRef(false);
+    const tableRef = useRef<HTMLTableElement>(null);
+
+    // Push the new ranges into local state and mirror the row dimension into the
+    // table's row selection, so existing bulk actions (which read getSelectedRowModel) keep working.
+    const applyRanges = useCallback((next: CellRange[]) => {
+        rangesRef.current = next;
+        setRanges(next);
+
+        const rowSelection: Record<string, boolean> = {};
+        for (const range of next) {
+            const r0 = Math.min(range.anchor.r, range.focus.r);
+            const r1 = Math.max(range.anchor.r, range.focus.r);
+            for (let r = r0; r <= r1; r++) {
+                const row = rows[r];
+                if (row) rowSelection[row.id] = true;
+            }
+        }
+        table.setRowSelection(rowSelection);
+    }, [rows, table]);
+
+    // If something else clears the selection (e.g. after a bulk action), drop the cell highlight too.
+    const rowSelectionState = table.getState().rowSelection;
+    useEffect(() => {
+        if (Object.keys(rowSelectionState).length === 0 && rangesRef.current.length > 0) {
+            rangesRef.current = [];
+            setRanges([]);
+        }
+    }, [rowSelectionState]);
+
+    // A drag can end anywhere on the page, so listen for mouseup on the window.
+    useEffect(() => {
+        const handleMouseUp = () => {
+            isDraggingRef.current = false;
+        };
+        window.addEventListener("mouseup", handleMouseUp);
+        return () => window.removeEventListener("mouseup", handleMouseUp);
+    }, []);
+
+    // Escape clears the current selection (cells and the mirrored row selection).
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape" && rangesRef.current.length > 0) {
+                isDraggingRef.current = false;
+                applyRanges([]);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [applyRanges]);
+
+    // Read the visible text of a cell from the DOM, collapsing any whitespace so it
+    // stays on a single TSV field (tabs/newlines would otherwise break the grid).
+    const getCellText = useCallback((r: number, c: number) => {
+        const el = tableRef.current?.querySelector<HTMLElement>(
+            `td[data-row="${r}"][data-col="${c}"]`
+        );
+        return (el?.textContent ?? "").replace(/\s+/g, " ").trim();
+    }, []);
+
+    // Build a TSV grid (tab-separated columns, newline-separated rows) over the
+    // bounding box of the current selection. Pasting TSV into Sheets/Excel preserves structure.
+    const buildClipboardTsv = useCallback(() => {
+        const currentRanges = rangesRef.current;
+        if (currentRanges.length === 0) return "";
+
+        let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+        const selected = new Set<string>();
+        for (const range of currentRanges) {
+            const r0 = Math.min(range.anchor.r, range.focus.r);
+            const r1 = Math.max(range.anchor.r, range.focus.r);
+            const c0 = Math.min(range.anchor.c, range.focus.c);
+            const c1 = Math.max(range.anchor.c, range.focus.c);
+            minR = Math.min(minR, r0); maxR = Math.max(maxR, r1);
+            minC = Math.min(minC, c0); maxC = Math.max(maxC, c1);
+            for (let r = r0; r <= r1; r++) {
+                for (let c = c0; c <= c1; c++) selected.add(cellKey(r, c));
+            }
+        }
+
+        const lines: string[] = [];
+        for (let r = minR; r <= maxR; r++) {
+            const cols: string[] = [];
+            for (let c = minC; c <= maxC; c++) {
+                cols.push(selected.has(cellKey(r, c)) ? getCellText(r, c) : "");
+            }
+            lines.push(cols.join("\t"));
+        }
+        return lines.join("\n");
+    }, [getCellText]);
+
+    // Intercept Cmd/Ctrl+C (and right-click copy) so the selected cells go to the
+    // clipboard as TSV, while leaving copies from inputs/text selections untouched.
+    useEffect(() => {
+        const handleCopy = (e: ClipboardEvent) => {
+            if (rangesRef.current.length === 0) return;
+
+            const active = document.activeElement as HTMLElement | null;
+            if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) {
+                return;
+            }
+            if ((window.getSelection()?.toString().length ?? 0) > 0) return;
+
+            const tsv = buildClipboardTsv();
+            if (!tsv) return;
+
+            e.clipboardData?.setData("text/plain", tsv);
+            e.preventDefault();
+
+            // const numRows = tsv.split("\n").length;
+            // emitToast(`Copied ${numRows} row${numRows === 1 ? "" : "s"} to clipboard`, ToastType.Success);
+        };
+        document.addEventListener("copy", handleCopy);
+        return () => document.removeEventListener("copy", handleCopy);
+    }, [buildClipboardTsv]);
+
+    // Replace the focus of the active (last) range, leaving its anchor fixed.
+    const extendActiveRange = useCallback((focus: CellCoord) => {
+        const current = rangesRef.current;
+        if (current.length === 0) return;
+        const next = current.slice();
+        next[next.length - 1] = { anchor: next[next.length - 1].anchor, focus };
+        applyRanges(next);
+    }, [applyRanges]);
+
+    const handleCellMouseDown = useCallback((e: React.MouseEvent, r: number, c: number) => {
+        const row = rows[r];
+        if (!row) return;
+
+        // Double-click opens the camper view.
+        if (e.detail >= 2) {
+            navigate(`/camper-view/${row.original.userSub}`);
+            return;
+        }
+
+        const isMeta = e.metaKey || e.ctrlKey;
+        const cell: CellCoord = { r, c };
+
+        if (e.shiftKey && rangesRef.current.length > 0) {
+            // Shift-click: extend the active range from its anchor to this cell.
+            e.preventDefault();
+            extendActiveRange(cell);
+        } else if (isMeta) {
+            // Cmd/Ctrl-click: start a new, disjoint range at this cell while keeping the others.
+            isDraggingRef.current = true;
+            applyRanges([...rangesRef.current, { anchor: cell, focus: cell }]);
+        } else {
+            // Plain click: start a fresh single-cell selection and arm a drag.
+            isDraggingRef.current = true;
+            applyRanges([{ anchor: cell, focus: cell }]);
+        }
+    }, [rows, navigate, extendActiveRange, applyRanges]);
+
+    const handleCellMouseEnter = useCallback((r: number, c: number) => {
+        if (!isDraggingRef.current) return;
+        // While dragging, grow the active range to wherever the cursor is.
+        extendActiveRange({ r, c });
+    }, [extendActiveRange]);
+
+    // Derive the set of highlighted cells and the anchor cell (bold box) from the ranges.
+    const { selectedCells, anchorCellKey } = useMemo(() => {
+        const selected = new Set<string>();
+        for (const range of ranges) {
+            const r0 = Math.min(range.anchor.r, range.focus.r);
+            const r1 = Math.max(range.anchor.r, range.focus.r);
+            const c0 = Math.min(range.anchor.c, range.focus.c);
+            const c1 = Math.max(range.anchor.c, range.focus.c);
+            for (let r = r0; r <= r1; r++) {
+                for (let c = c0; c <= c1; c++) {
+                    selected.add(cellKey(r, c));
+                }
+            }
+        }
+        const active = ranges[ranges.length - 1];
+        return {
+            selectedCells: selected,
+            anchorCellKey: active ? cellKey(active.anchor.r, active.anchor.c) : null,
+        };
+    }, [ranges]);
 
     function LoadingTableBody() {
         return (
@@ -87,7 +237,7 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
 
     return (
         <>
-            <table id="admin-table">
+            <table id="admin-table" ref={tableRef} style={{ userSelect: "none" }}>
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => {
                         return (
@@ -110,7 +260,35 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
                         )
                     })}
                 </thead>
-                {isPending ? <LoadingTableBody /> : <TableBody />}
+                {isPending ? <LoadingTableBody /> : (
+                    <tbody>
+                        {rows.map((row, rowIndex) => (
+                            <tr key={row.id}>
+                                {row.getVisibleCells().map((cell, colIndex) => {
+                                    const key = cellKey(rowIndex, colIndex);
+                                    const meta = cell.column.columnDef.meta as { className?: string } | undefined;
+                                    const classNames = [
+                                        selectedCells.has(key) ? "cell-selected" : "",
+                                        key === anchorCellKey ? "cell-anchor" : "",
+                                        meta?.className ?? "",
+                                    ].filter(Boolean).join(" ");
+                                    return (
+                                        <td
+                                            key={cell.id}
+                                            className={classNames}
+                                            data-row={rowIndex}
+                                            data-col={colIndex}
+                                            onMouseDown={(e) => handleCellMouseDown(e, rowIndex, colIndex)}
+                                            onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
+                                        >
+                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                )}
             </table>
         </>
     );

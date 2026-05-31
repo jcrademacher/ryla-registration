@@ -12,6 +12,10 @@ import { sendEmailToAdmins } from "../functions/send-email-to-admins/resource";
 import { notifyAdmittedCampers } from "../functions/notify-admitted-campers/resource";
 import { sendEmailToClubReps } from "../functions/send-email-to-club-reps/resource";
 import { listClubRotarians } from "../functions/list-club-rotarians/resource";
+import { rejectCamperDocument } from "../functions/documents/reject-camper-document/resource";
+import { approveCamperDocument } from "../functions/documents/approve-camper-document/resource";
+import { markMissingCamperDocument } from "../functions/documents/mark-missing-camper-document/resource";
+import { listAllRotarians } from "../functions/list-all-rotarians/resource";
 // import { generateInviteCode } from "../functions/generate-invite-code/resource";
 // import { selectUserRole } from "../functions/select-user-role/resource";
 
@@ -296,6 +300,7 @@ const schema = a.schema({
         lastName: a.string(),
         email: a.string().required(),
         rotaryClubId: a.id(),
+        clubName: a.string(),
         approved: a.boolean(),
         group: a.enum(AUTH_GROUPS),
     }),
@@ -304,10 +309,28 @@ const schema = a.schema({
         .query()
         .arguments({
             rotaryClubId: a.id().required(),
+            limit: a.integer(),
+            nextToken: a.string()
         })
-        .authorization((allow) => [allow.group("ADMINS"), allow.group("COORDINATORS")])
+        .authorization((allow) => [allow.group("ADMINS"), allow.group("COORDINATORS"), allow.group("ROTARIANS")])
         .handler(a.handler.function(listClubRotarians))
-        .returns(a.ref('RotarianProfileWithGroup').required().array()),
+        .returns(a.ref('ListRotariansResult')),
+
+    listAllRotarians: a
+        .query()
+        .arguments({
+            limit: a.integer(),
+            nextToken: a.string()
+        })
+        .authorization((allow) => [allow.group("ADMINS"), allow.group("COORDINATORS"), allow.group("ROTARIANS")])
+        .handler(a.handler.function(listAllRotarians))
+        .returns(a.ref('ListRotariansResult')),
+
+    ListRotariansResult: a.customType({
+        items: a.ref('RotarianProfileWithGroup').required().array().required(),
+        nextToken: a.string()
+    }),
+
 
     ListUsersResult: a.customType({
         items: a.ref('UserProfile').required().array().required(),
@@ -385,6 +408,37 @@ const schema = a.schema({
         .authorization((allow) => [allow.group("ADMINS"), allow.group("ROTARIANS"), allow.group("COORDINATORS")])
         .handler(a.handler.function(generateCamperPdf))
         .returns(a.string()),
+
+    rejectCamperDocument: a
+        .mutation()
+        .arguments({
+            camperUserSub: a.string().required(),
+            templateId: a.string().required(),
+            message: a.string()
+        })
+        .authorization((allow) => [allow.group("ADMINS")])
+        .handler(a.handler.function(rejectCamperDocument))
+        .returns(a.json()),
+
+    approveCamperDocument: a
+        .mutation()
+        .arguments({
+            camperUserSub: a.string().required(),
+            templateId: a.string().required()
+        })
+        .authorization((allow) => [allow.group("ADMINS")])
+        .handler(a.handler.function(approveCamperDocument))
+        .returns(a.json()),
+
+    markMissingCamperDocument: a
+        .mutation()
+        .arguments({
+            camperUserSub: a.string().required(),
+            templateId: a.string().required()
+        })
+        .authorization((allow) => [allow.group("ADMINS")])
+        .handler(a.handler.function(markMissingCamperDocument))
+        .returns(a.json()),
     // generateInviteCode: a
     //     .mutation()
     //     .authorization((allow) => [allow.group("ADMINS")])
@@ -415,6 +469,10 @@ const schema = a.schema({
     allow.resource(notifyAdmittedCampers).to(["query", "mutate"]),
     allow.resource(sendEmailToClubReps).to(["query"]),
     allow.resource(listClubRotarians).to(["query"]),
+    allow.resource(listAllRotarians).to(["query"]),
+    allow.resource(rejectCamperDocument).to(["query", "mutate"]),
+    allow.resource(approveCamperDocument).to(["query", "mutate"]),
+    allow.resource(markMissingCamperDocument).to(["query", "mutate"]),
 ]);
 
 export type Schema = ClientSchema<typeof schema>;

@@ -24,6 +24,7 @@ import { SubmitRecommendationPage } from "./pages/SubmitRecommendationPage";
 import { HelpPage } from "./pages/HelpPage";
 import { CampInfoPage } from "./pages/CampInfoPage";
 import { RotaryClubDetailsPage } from "./pages/RotaryClubDetailsPage";
+import { RotarianDirectory } from "./pages/RotarianDirectory";
 
 function App() {
     return (
@@ -129,6 +130,11 @@ function AuthView({ signOut, user }: AuthViewProps) {
                                 <Route path="rotary-clubs" element={
                                     <ProtectedRoute hasAccess={isAdmin}>
                                         <RotaryClubManagementPage />
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="rotarians" element={
+                                    <ProtectedRoute hasAccess={isAdmin}>
+                                        <RotarianDirectory />
                                     </ProtectedRoute>
                                 } />
                                 <Route path="rotary-club-details" element={

@@ -10,6 +10,7 @@ import { deleteUser } from '../functions/delete-user/resource';
 import { getUser } from '../functions/get-user/resource';
 import { sendEmailToAdmins } from '../functions/send-email-to-admins/resource';
 import { listClubRotarians } from '../functions/list-club-rotarians/resource';
+import { listAllRotarians } from '../functions/list-all-rotarians/resource';
 
 // import { selectUserRole } from '../functions/select-user-role/resource';
 
@@ -61,5 +62,6 @@ export const auth = defineAuth({
         allow.resource(getUser).to(["manageUsers"]),
         allow.resource(sendEmailToAdmins).to(["listUsersInGroup"]),
         allow.resource(listClubRotarians).to(["manageUsers"]),
+        allow.resource(listAllRotarians).to(["manageUsers"]),
     ]
 });

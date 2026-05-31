@@ -1,20 +1,51 @@
-import React from 'react';
-import { Container, Spinner, Alert, Table, Badge } from 'react-bootstrap';
+import React, { useContext, useRef, useState } from 'react';
+import { Container, Spinner, Alert, Badge, Form } from 'react-bootstrap';
 import { useSearchParams, Link } from 'react-router';
-import { useRotaryClubQuery, useRotarianProfilesByClubQuery, useGetUserQuery } from '../queries/queries';
+import { useRotaryClubQuery } from '../queries/queries';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faPencil } from '@fortawesome/free-solid-svg-icons';
 import { ThinSpacer } from '../components/ThinSpacer';
-import { RotarianProfileSchemaType } from '../api/apiRotarianProfile';
-import { PlaceholderElement } from '../components/PlaceholderElement';
-
+import { AuthContext } from '../App';
+import { isUserAdmin } from '../api/auth';
+import { useUpdateRotaryClubMutation } from '../queries/adminMutations';
+import { useQueryClient } from '@tanstack/react-query';
+import { emitToast, ToastType } from '../utils/notifications';
+import { RotaryClubSchemaType } from '../api/apiRotaryClub';
+import { RotarianTable } from './RotarianDirectory';
 
 export const RotaryClubDetailsPage: React.FC = () => {
     const [searchParams] = useSearchParams();
     const clubId = searchParams.get('id');
+    const authContext = useContext(AuthContext);
+    const isAdmin = isUserAdmin(authContext.groups);
+    const queryClient = useQueryClient();
 
     const { data: rotaryClub, isLoading: isLoadingClub, error: clubError } = useRotaryClubQuery(clubId);
-    const { data: rotarianProfiles, isLoading: isLoadingRotarians, error: rotariansError } = useRotarianProfilesByClubQuery(clubId);
+
+    const [editingField, setEditingField] = useState<string | null>(null);
+    const editCancelledRef = useRef(false);
+    const { mutate: updateClub } = useUpdateRotaryClubMutation();
+
+    const handleUpdateClubSetting = (field: string, value: boolean | number) => {
+        if (!rotaryClub) return;
+
+        queryClient.setQueryData(['rotaryClub', clubId], (old: RotaryClubSchemaType) => ({
+            ...old,
+            [field]: value,
+        }));
+        updateClub(
+            { id: rotaryClub.id, [field]: value },
+            {
+                onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ['rotaryClub'] });
+                    emitToast('Club setting updated', ToastType.Success);
+                },
+                onError: () => {
+                    emitToast('Failed to update setting', ToastType.Error);
+                },
+            }
+        );
+    };
 
     if (!clubId) {
         return (
@@ -30,7 +61,7 @@ export const RotaryClubDetailsPage: React.FC = () => {
         );
     }
 
-    if (isLoadingClub || isLoadingRotarians) {
+    if (isLoadingClub) {
         return (
             <Container className="mt-4">
                 <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
@@ -43,11 +74,11 @@ export const RotaryClubDetailsPage: React.FC = () => {
         );
     }
 
-    if (clubError || rotariansError) {
+    if (clubError) {
         return (
             <Container className="mt-4">
                 <Alert variant="danger">
-                    Error loading club details: {clubError?.message || rotariansError?.message}
+                    Error loading club details: {clubError?.message}
                 </Alert>
                 <Link to="/admin/rotary-clubs" className="btn btn-primary">
                     <FontAwesomeIcon icon={faArrowLeft} className="me-2" />
@@ -81,78 +112,138 @@ export const RotaryClubDetailsPage: React.FC = () => {
             {/* Club Information Card */}
             <div className="row mb-3">
                 <div className="col-md-6">
-                    <p className="mb-2">
-                        <strong>Requires Application:</strong>{' '}
-                        <Badge bg={rotaryClub.requiresApplication ? 'success' : 'danger'}>
-                            {rotaryClub.requiresApplication ? 'Yes' : 'No'}
-                        </Badge>
-                    </p>
-                    <p className="mb-2">
-                        <strong>Requires Interview:</strong>{' '}
-                        <Badge bg={rotaryClub.requiresInterview ? 'success' : 'danger'}>
-                            {rotaryClub.requiresInterview ? 'Yes' : 'No'}
-                        </Badge>
-                    </p>
+                    <div className="mb-2 d-flex align-items-center gap-2">
+                        <strong>Requires Application:</strong>
+                        {editingField === 'requiresApplication' ? (
+                            <Form.Select
+                                size="sm"
+                                style={{ width: 'auto' }}
+                                autoFocus
+                                defaultValue={rotaryClub.requiresApplication ? 'true' : 'false'}
+                                onChange={(e) => {
+                                    handleUpdateClubSetting('requiresApplication', e.target.value === 'true');
+                                    setEditingField(null);
+                                }}
+                                onBlur={() => setEditingField(null)}
+                                onKeyDown={(e) => { if (e.key === 'Escape') setEditingField(null); }}
+                            >
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </Form.Select>
+                        ) : (
+                            <>
+                                <Badge bg={rotaryClub.requiresApplication ? 'success' : 'danger'}>
+                                    {rotaryClub.requiresApplication ? 'Yes' : 'No'}
+                                </Badge>
+                                {isAdmin && (
+                                    <FontAwesomeIcon
+                                        icon={faPencil}
+                                        className="text-primary"
+                                        size="xs"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => setEditingField('requiresApplication')}
+                                    />
+                                )}
+                            </>
+                        )}
+                    </div>
+                    <div className="mb-2 d-flex align-items-center gap-2">
+                        <strong>Requires Interview:</strong>
+                        {editingField === 'requiresInterview' ? (
+                            <Form.Select
+                                size="sm"
+                                style={{ width: 'auto' }}
+                                autoFocus
+                                value={rotaryClub.requiresInterview ? 'true' : 'false'}
+                                onChange={(e) => {
+                                    handleUpdateClubSetting('requiresInterview', e.target.value === 'true');
+                                    setEditingField(null);
+                                }}
+                                onBlur={() => setEditingField(null)}
+                                onKeyDown={(e) => { if (e.key === 'Escape') setEditingField(null); }}
+                            >
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </Form.Select>
+                        ) : (
+                            <>
+                                <Badge bg={rotaryClub.requiresInterview ? 'success' : 'danger'}>
+                                    {rotaryClub.requiresInterview ? 'Yes' : 'No'}
+                                </Badge>
+                                {isAdmin && (
+                                    <FontAwesomeIcon
+                                        icon={faPencil}
+                                        className="text-primary"
+                                        size="xs"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => setEditingField('requiresInterview')}
+                                    />
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
                 <div className="col-md-6">
-                    <p className="mb-2">
-                        <strong>Required Number of Letters:</strong> {rotaryClub.numRequiredLetters || 0}
-                    </p>
+                    <div className="mb-2 d-flex align-items-center gap-2">
+                        <strong>Required Number of Letters:</strong>
+                        {editingField === 'numRequiredLetters' ? (
+                            <Form.Control
+                                type="number"
+                                size="sm"
+                                min={0}
+                                max={5}
+                                autoFocus
+                                style={{ width: '80px' }}
+                                defaultValue={rotaryClub.numRequiredLetters ?? 0}
+                                onBlur={(e) => {
+                                    if (!editCancelledRef.current) {
+                                        const val = Math.min(5, Math.max(0, parseInt(e.target.value) || 0));
+                                        if (val !== (rotaryClub.numRequiredLetters ?? 0)) {
+                                            handleUpdateClubSetting('numRequiredLetters', val);
+                                        }
+                                    }
+                                    editCancelledRef.current = false;
+                                    setEditingField(null);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        (e.target as HTMLInputElement).blur();
+                                    } else if (e.key === 'Escape') {
+                                        editCancelledRef.current = true;
+                                        (e.target as HTMLInputElement).blur();
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <>
+                                <span>{rotaryClub.numRequiredLetters || 0}</span>
+                                {isAdmin && (
+                                    <FontAwesomeIcon
+                                        icon={faPencil}
+                                        className="text-primary"
+                                        size="xs"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => setEditingField('numRequiredLetters')}
+                                    />
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Rotarian Members */}
 
-            <h5>Club Representatives ({rotarianProfiles?.length || 0})</h5>
+            <h5>Club Representatives</h5>
             <ThinSpacer />
 
-            {rotarianProfiles && rotarianProfiles.length > 0 ? (
-                <Table striped bordered hover responsive>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Groups</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rotarianProfiles.map((profile) => (
-                            <RotarianRow key={profile.userSub} profile={profile} />
-                        ))}
-                    </tbody>
-                </Table>
-            ) : (
-                <p className="text-muted mb-0">No club representatives found.</p>
-            )}
+            <p>
+                Coordinators and Rotarians can read applications, recommendations, and files, but only Coordinators can make decisions to admit, reject, or transfer applicants.
+            </p>
+
+            <RotarianTable rotaryClubId={clubId} />
         </Container>
     );
 };
 
-function RotarianRow({ profile }: { profile: RotarianProfileSchemaType }) {
-    const { data: user, isPending: isPendingUser } = useGetUserQuery(profile.userSub);
-
-    return (
-        <tr key={profile.userSub}>
-            <td>
-                {profile.firstName && profile.lastName
-                    ? `${profile.firstName} ${profile.lastName}`
-                    : 'N/A'}
-            </td>
-            <td>{profile.email}</td>
-            <td>
-                <PlaceholderElement isLoading={isPendingUser} props={{ xs: 7 }}>
-                    {user ? user?.groupNames?.map((name) => {
-                        return <Badge key={name} bg={name === "COORDINATORS" ? "primary" : "secondary"}>{name}</Badge>
-                    })
-                : 
-                <span className="text-danger">
-                    <FontAwesomeIcon icon={faTriangleExclamation} className="me-1" />
-                    Orphaned profile
-                </span>
-                }
-                </PlaceholderElement>
-            </td>
-        </tr>
-    )
-}
 

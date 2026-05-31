@@ -5,17 +5,14 @@ import { Table as TanstackTable } from "@tanstack/table-core";
 import { CamperProfileRowData } from "../../api/apiCamperTable";
 import { useCampQuery } from "../../queries/adminQueries";
 import { useDocumentTemplatesByCampQuery, useCamperDocumentsQuery, useListRotaryClubsQuery, useCamperDocumentQuery } from "../../queries/queries";
-import { useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ConfirmationModal } from "../../components/modals";
 import { DocumentTemplateSchemaType } from "../../api/apiDocuments";
-import { useUploadMultipleCamperDocumentsMutation, useUploadCamperDocumentMutation, useUpdateMultipleProfilesMutation, useDecideCampersMutation } from "../../queries/mutations";
+import { useUploadCamperDocumentMutation, useUpdateMultipleProfilesMutation, useDecideCampersMutation, useUpdateCamperDocumentStatusMutation } from "../../queries/mutations";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { emitToast, ToastType } from "../../utils/notifications";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { useApproveDocumentEmailMutation, useRejectDocumentEmailMutation } from "../../queries/emailMutations";
-import { getFilepathFilename } from "../../utils/fields";
-import { AuthContext } from "../../App";
 import { DateTime } from "luxon";
 import { getCamperName } from "../../utils/fields";
 import { SpinnerButton } from "../../utils/button";
@@ -276,46 +273,44 @@ function ConfirmDocumentReceivedModal({
 }: ConfirmDocumentReceivedModalProps) {
     const selectedCampers = table.getSelectedRowModel().rows.map(row => row.original);
 
-    const { mutate: uploadDocuments, isPending: isUploadingDocuments } = useUploadMultipleCamperDocumentsMutation();
-    const { mutate: approveDocumentEmail } = useApproveDocumentEmailMutation();
+    const { mutateAsync: updateCamperDocumentStatus, isPending: isApproving } = useUpdateCamperDocumentStatusMutation();
     const queryClient = useQueryClient();
 
-    const handleConfirm = () => {
-        // TODO: Backend integration will go here
-        console.log('Marking as received:', selectedCampers);
-
+    const handleConfirm = async () => {
         if (!documentTemplate) {
             console.warn("No document template selected");
             return;
         }
 
-        uploadDocuments({
-            objects: selectedCampers.map(camper => ({
-                document: {
+        // approveCamperDocument operates on a single camper (and sends the approval
+        // email server-side), so fan out one mutation per camper and aggregate results.
+        const results = await Promise.allSettled(
+            selectedCampers.map(camper =>
+                updateCamperDocumentStatus({
                     camperUserSub: camper.userSub,
                     templateId: documentTemplate.id,
-                    received: true,
-                    approved: true
-                }
-            })),
-        },
-            {
-                onSuccess: () => {
-                    selectedCampers.forEach(camper => {
-                        approveDocumentEmail({
-                            templateName: documentTemplate?.name ?? '',
-                            to: [camper.email, camper.parent1Email, camper.parent2Email],
-                        });
-                    });
-
-                    emitToast(`'${documentTemplate.name}' approved for ${selectedCampers.length} campers`, ToastType.Success);
-                },
-                onSettled: () => {
-                    queryClient.invalidateQueries({ queryKey: ['camperDataAdmin'] });
-                    onClose();
-                }
-            }
+                    action: 'approve'
+                })
+            )
         );
+
+        const failedCampers = selectedCampers.filter((_, index) => results[index].status === 'rejected');
+        const succeededCount = selectedCampers.length - failedCampers.length;
+
+        if (failedCampers.length === 0) {
+            emitToast(`'${documentTemplate.name}' approved for ${succeededCount} camper(s)`, ToastType.Success);
+        } else {
+            failedCampers.forEach(camper => {
+                emitToast(`Failed to approve '${documentTemplate.name}' for ${getCamperName(camper)}`, ToastType.Error);
+            });
+
+            if (succeededCount > 0) {
+                emitToast(`'${documentTemplate.name}' approved for ${succeededCount} of ${selectedCampers.length} camper(s)`, ToastType.Success);
+            }
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['camperDataAdmin'] });
+        onClose();
     };
 
     return (
@@ -326,7 +321,7 @@ function ConfirmDocumentReceivedModal({
             confirmButtonText="Confirm"
             confirmButtonVariant="primary"
             onConfirm={handleConfirm}
-            isLoading={isUploadingDocuments}
+            isLoading={isApproving}
         >
 
             The following camper(s) will have their "{documentTemplate?.name}" document marked as received:
@@ -364,13 +359,9 @@ function ChangeDocumentStatusModal({
     const { data: camp } = useCampQuery();
     const { data: documentTemplates } = useDocumentTemplatesByCampQuery(camp?.id);
 
-    const { mutate: uploadDocument, isPending: isUpdating } = useUploadCamperDocumentMutation();
-    const { mutate: rejectDocumentEmail } = useRejectDocumentEmailMutation();
-    const { mutate: approveDocumentEmail } = useApproveDocumentEmailMutation();
+    const { mutate: updateCamperDocumentStatus, isPending: isUpdating } = useUpdateCamperDocumentStatusMutation();
 
     const queryClient = useQueryClient();
-
-    const authContext = useContext(AuthContext);
 
     const form = useForm<ChangeDocumentStatusForm>({
         defaultValues: {
@@ -382,70 +373,19 @@ function ChangeDocumentStatusModal({
     const selectedTemplateIsMailed = documentTemplates?.some(doc => doc.id === form.watch('templateId') && doc.type === 'mail');
     const selectedTemplate = documentTemplates?.find(doc => doc.id === form.watch('templateId'));
 
-    const selectedDocument = camperDocuments?.find(d => d.templateId === form.watch('templateId'));
-
     const onSubmit: SubmitHandler<ChangeDocumentStatusForm> = (data) => {
         if (!selectedCamper) {
             emitToast("No camper selected", ToastType.Error);
             return;
         }
 
-        let updates: { approved?: boolean; received?: boolean } = {};
-
-        switch (data.statusAction) {
-            case 'approve':
-                updates = { 
-                    approved: true,
-                    received: true
-                };
-                break;
-            case 'reject':
-                updates = { approved: false };
-                break;
-            case 'missing':
-                updates = { received: false };
-                break;
-        }
-
-        uploadDocument({
-            document: {
-                camperUserSub: selectedCamper.userSub,
-                templateId: data.templateId,
-                received: updates.received,
-                approved: updates.approved
-            },
+        updateCamperDocumentStatus({ 
+            camperUserSub: selectedCamper.userSub, 
+            templateId: data.templateId, 
+            action: data.statusAction, 
+            message: data.message 
         }, {
             onSuccess: () => {
-                console.log('selectedDocument', selectedDocument);
-                console.log('selectedTemplate', selectedTemplate);
-                // Invalidate relevant queries
-                if (data.statusAction === 'reject') {
-                    rejectDocumentEmail({
-                        docName: getFilepathFilename(selectedDocument?.filepath) ?? '',
-                        templateName: selectedTemplate?.name ?? '',
-                        to: [selectedCamper.email, selectedCamper.parent1Email, selectedCamper.parent2Email],
-                        message: data.message,
-                        replyTo: authContext.attributes.email
-                    });
-                }
-                else if (data.statusAction === 'approve') {
-                    approveDocumentEmail({
-                        templateName: selectedTemplate?.name ?? '',
-                        to: [selectedCamper.email, selectedCamper.parent1Email, selectedCamper.parent2Email],
-                        replyTo: authContext.attributes.email
-                    });
-                }
-
-                // if(data.statusAction === 'reject') {    
-                //     rejectDocument({
-                //         document: {
-                //             camperUserSub: selectedCamper.userSub,
-                //             templateId: data.templateId,
-                //             received: updates.received,
-                //             approved: updates.approved
-                //         }
-                //     });
-                // }
                 emitToast(`Document status updated for ${selectedCamper.firstName} ${selectedCamper.lastName}`, ToastType.Success);
             },
             onSettled: () => {
@@ -453,7 +393,7 @@ function ChangeDocumentStatusModal({
                 form.reset();
                 onClose();
             },
-            onError: (error) => {
+            onError: (error: unknown) => {
                 console.error('Error updating document status:', error);
                 emitToast("Failed to update document status", ToastType.Error);
             }
@@ -864,6 +804,7 @@ function UploadDocumentModal({
                                     filepath={existingDocument?.filepath}
                                     submitHandler={submitHandler}
                                     isPending={isPending}
+                                    isAdmin={true}
                                 />
                             </PlaceholderElement>
                         )}

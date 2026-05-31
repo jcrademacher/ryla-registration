@@ -94,6 +94,8 @@ const DocumentComponent: React.FC<DocumentComponentProps> = ({
                 filepath={thisDocument?.filepath} 
                 submitHandler={submitHandler} 
                 isPending={isUploadingDocument || isPendingThisDocument}
+                isAdmin={true}
+                defaultViewFile={true}
             />
         }
     }
@@ -128,7 +130,10 @@ const DocumentComponent: React.FC<DocumentComponentProps> = ({
                     {renderSubtitle()}
                 </small>
             </div>
+            <div>
             {renderUploadContent()}
+            </div>
+            
             {renderRightContent()}
         </div>
     );

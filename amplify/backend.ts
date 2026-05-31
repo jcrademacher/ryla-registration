@@ -10,6 +10,9 @@ import { sendEmailToAdmins } from "./functions/send-email-to-admins/resource";
 import { sendEmailToClubReps } from "./functions/send-email-to-club-reps/resource";
 import { notifyAdmittedCampers } from "./functions/notify-admitted-campers/resource";
 import { listClubRotarians } from "./functions/list-club-rotarians/resource";
+import { rejectCamperDocument } from "./functions/documents/reject-camper-document/resource";
+import { approveCamperDocument } from "./functions/documents/approve-camper-document/resource";
+import { markMissingCamperDocument } from "./functions/documents/mark-missing-camper-document/resource";
 
 const backend = defineBackend({
     auth,
@@ -20,7 +23,10 @@ const backend = defineBackend({
     sendEmailToAdmins,
     sendEmailToClubReps,
     notifyAdmittedCampers,
-    listClubRotarians
+    listClubRotarians,
+    rejectCamperDocument,
+    approveCamperDocument,
+    markMissingCamperDocument
 });
 
 const lambdaFunction = backend.listUsers.resources.lambda;
@@ -56,4 +62,10 @@ sendEmailToClubRepsLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
 
 const notifyAdmittedCampersLambdaFunction = backend.notifyAdmittedCampers.resources.lambda;
 notifyAdmittedCampersLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
+
+const rejectCamperDocumentLambdaFunction = backend.rejectCamperDocument.resources.lambda;
+rejectCamperDocumentLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
+
+const approveCamperDocumentLambdaFunction = backend.approveCamperDocument.resources.lambda;
+approveCamperDocumentLambdaFunction.role?.attachInlinePolicy(sendEmailPolicy);
 

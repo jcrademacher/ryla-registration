@@ -440,12 +440,12 @@ function RotarianCamperTablePage() {
                 </Col>
             </Row>
 
-            <RotarianTable />
+            <RotarianCamperTable />
         </Container>
     );
 }
 
-function RotarianTable() {
+function RotarianCamperTable() {
     const authContext = useContext(AuthContext);
 
     const { data: rotarianProfile } = useRotarianProfileQuery(authContext.attributes.sub);

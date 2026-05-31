@@ -449,11 +449,18 @@ function ApplicationGroup() {
                     <strong>What leadership strengths do you have and what would be your goals for
                         attending a 4-day outdoor leadership camp?</strong>
                 </p>
-                <FileInputGroup
-                    filepath={camperProfile?.applicationFilepath}
-                    submitHandler={applicationUploadHandler}
-                    isPending={uploadCamperApplicationMutation.isPending}
-                />
+                <div className="d-flex flex-direction-row gap-3">
+                    <div>
+                        <FileInputGroup
+                            filepath={camperProfile?.applicationFilepath}
+                            submitHandler={applicationUploadHandler}
+                            isPending={uploadCamperApplicationMutation.isPending}
+                            isAdmin={true}
+                            defaultViewFile={true}
+                        />
+                    </div>
+                </div>
+                
                 <br />
             </>
         );

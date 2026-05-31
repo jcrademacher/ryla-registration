@@ -284,16 +284,24 @@
         // tr:nth-child(odd) {
         //     background-color: white;
         // }
-        
-        tr.selected {
+
+        // Spreadsheet-style selection: cells dragged/clicked over are lightly highlighted.
+        td.cell-selected {
             background-color: rgba(colors.$secondary, 0.2);
         }
 
-    
+        // The anchor cell (where the active selection started) gets a bold bounding box.
+        // outline (with a negative offset) avoids shifting the surrounding layout.
+        td.cell-anchor {
+            position: relative;
+            z-index: 1;
+            outline: 2px solid colors.$primary;
+            outline-offset: -2px;
+        }
     }
 
     td {
-        border: 0.5px solid colors.$secondary;
+        border: 0.01em solid rgba(colors.$secondary, 0.5);
         text-wrap: nowrap;
         // border-collapse: collapse;
         padding: 5px;
@@ -302,5 +310,21 @@
         //     -webkit-user-select: none;
         //     -moz-user-select: none;
         //     -ms-user-select: none;
+    }
+
+    td.row-index-cell {
+        background-color: colors.$secondary-dark;
+        color: white;
+        text-align: center;
+        font-weight: 600;
+        border: 0.5px solid colors.$primary;
+
+        &.cell-selected {
+            background-color: colors.$secondary-dark;
+        }
+
+        &.cell-anchor {
+            outline: none;
+        }
     }
 }
