@@ -21,9 +21,9 @@ export async function uploadCamperApplication(userSub: string, file: File | null
         throw new Error("Camper identity ID is required");
     }
 
-    if(camper?.applicationFilepath) {
-        deleteDocument(camper.applicationFilepath);
-    }
+    // if(camper?.applicationFilepath) {
+    //     deleteDocument(camper.applicationFilepath);
+    // }
 
     let result;
 
@@ -102,9 +102,9 @@ export async function uploadDocumentTemplate(
 
     documentTemplate.filepath = filepath;
 
-    if(existingTemplate?.filepath) {
-        deleteDocument(existingTemplate.filepath);
-    }
+    // if(existingTemplate?.filepath) {
+    //     deleteDocument(existingTemplate.filepath);
+    // }
 
     // NEED TO DO THIS UPON DEPLOYMENT TO S3 BUCKET IN ORDER FOR METADATA TO BE AVAILABLE
     //https://docs.amplify.aws/react/build-a-backend/storage/extend-s3-resources/#for-manually-configured-s3-resources
@@ -171,9 +171,9 @@ export async function uploadCamperDocument(
             throw new Error(`File size is too large (Maximum file size is ${MAX_FILE_SIZE / 1000000}MB)`);
         }
         
-        if(existingEntry?.filepath) {
-            deleteDocument(existingEntry.filepath);
-        }
+        // if(existingEntry?.filepath) {
+        //     deleteDocument(existingEntry.filepath);
+        // }
 
         result = await uploadData({
             path: identityId ? `camper-documents/${identityId}/${fileName}` : ({ identityId }) => `camper-documents/${identityId}/${fileName}`,

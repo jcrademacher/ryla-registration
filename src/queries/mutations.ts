@@ -316,9 +316,9 @@ export function useUpdateRecommendationMutation() {
             if(rec.emailAddress) {
                 if(oldPath) {
                     rec.filepath = null;
-                    await remove({
-                        path: oldPath
-                    });
+                    // await remove({
+                    //     path: oldPath
+                    // });
                 }
                 await sendRecommendationLinkEmail(rec.id, rec.emailAddress, name);
             }

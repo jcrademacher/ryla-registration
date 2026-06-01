@@ -57,9 +57,9 @@ export async function uploadRecommendation(
         throw new Error("Recommendation not found.");
     }
 
-    if(existingEntry.filepath) {
-        await remove({ path: existingEntry.filepath });
-    }
+    // if(existingEntry.filepath) {
+    //     await remove({ path: existingEntry.filepath });
+    // }
 
     const result = await uploadData({
         path: () => `camper-recommendations/${camperUserSub}/${fileName}`,
@@ -100,11 +100,11 @@ export async function uploadRecommendationUnauthenticated(
             throw new Error(`File size is too large (Maximum file size is ${MAX_FILE_SIZE / 1000000}MB)`);
         }
         
-        if(existingEntry?.filepath) {
-            await remove({
-                path: existingEntry.filepath
-            });
-        }
+        // if(existingEntry?.filepath) {
+        //     await remove({
+        //         path: existingEntry.filepath
+        //     });
+        // }
 
         result = await uploadData({
             path: () => `camper-recommendations/${camperUserSub}/${fileName}`,
