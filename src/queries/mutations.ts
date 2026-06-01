@@ -15,7 +15,7 @@ import {
     approveCamperDocument,
     markMissingCamperDocument
 } from "../api/apiDocuments.ts";
-import { remove, TransferProgressEvent } from "aws-amplify/storage";
+import { TransferProgressEvent } from "aws-amplify/storage";
 import { updateRotarianProfile, UpdateRotarianProfileSchemaType } from "../api/apiRotarianProfile.ts";
 import { AuthGroup } from "../../amplify/auth/utils.ts";
 import { setUserGroup, deleteUser } from "../api/auth.ts";

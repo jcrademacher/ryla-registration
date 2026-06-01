@@ -1,7 +1,7 @@
 import { client, checkErrors } from ".";
 import { Schema } from "../../amplify/data/resource";
 import { CamperProfileSchemaType } from "./apiCamperProfile";
-import { TransferProgressEvent, uploadData, remove } from 'aws-amplify/storage';
+import { TransferProgressEvent, uploadData } from 'aws-amplify/storage';
 import { MAX_FILE_SIZE } from ".";
 
 export type RecommendationSchemaType = Schema['Recommendation']['type'];
