@@ -35,12 +35,8 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
     const isDraggingRef = useRef(false);
     const tableRef = useRef<HTMLTableElement>(null);
 
-    // Push the new ranges into local state and mirror the row dimension into the
-    // table's row selection, so existing bulk actions (which read getSelectedRowModel) keep working.
-    const applyRanges = useCallback((next: CellRange[]) => {
-        rangesRef.current = next;
-        setRanges(next);
-
+    // Build the row-dimension mirror of the cell ranges for TanStack's row selection.
+    const buildRowSelection = useCallback((next: CellRange[]) => {
         const rowSelection: Record<string, boolean> = {};
         for (const range of next) {
             const r0 = Math.min(range.anchor.r, range.focus.r);
@@ -50,8 +46,21 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
                 if (row) rowSelection[row.id] = true;
             }
         }
-        table.setRowSelection(rowSelection);
-    }, [rows, table]);
+        return rowSelection;
+    }, [rows]);
+
+    // Push the new ranges into local state and (optionally) mirror the row dimension
+    // into the table's row selection, so existing bulk actions (which read
+    // getSelectedRowModel) keep working. During a drag we pass syncSelection=false:
+    // table.setRowSelection forces a full table re-render, so doing it on every
+    // mouseenter is the main source of lag. We commit it once on mouseup instead.
+    const applyRanges = useCallback((next: CellRange[], syncSelection = true) => {
+        rangesRef.current = next;
+        setRanges(next);
+        if (syncSelection) {
+            table.setRowSelection(buildRowSelection(next));
+        }
+    }, [table, buildRowSelection]);
 
     // If something else clears the selection (e.g. after a bulk action), drop the cell highlight too.
     const rowSelectionState = table.getState().rowSelection;
@@ -65,11 +74,15 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
     // A drag can end anywhere on the page, so listen for mouseup on the window.
     useEffect(() => {
         const handleMouseUp = () => {
+            if (!isDraggingRef.current) return;
             isDraggingRef.current = false;
+            // Commit the row-selection mirror once, now that the drag is finished,
+            // instead of on every mouseenter during the drag.
+            table.setRowSelection(buildRowSelection(rangesRef.current));
         };
         window.addEventListener("mouseup", handleMouseUp);
         return () => window.removeEventListener("mouseup", handleMouseUp);
-    }, []);
+    }, [table, buildRowSelection]);
 
     // Escape clears the current selection (cells and the mirrored row selection).
     useEffect(() => {
@@ -149,12 +162,12 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
     }, [buildClipboardTsv]);
 
     // Replace the focus of the active (last) range, leaving its anchor fixed.
-    const extendActiveRange = useCallback((focus: CellCoord) => {
+    const extendActiveRange = useCallback((focus: CellCoord, syncSelection = true) => {
         const current = rangesRef.current;
         if (current.length === 0) return;
         const next = current.slice();
         next[next.length - 1] = { anchor: next[next.length - 1].anchor, focus };
-        applyRanges(next);
+        applyRanges(next, syncSelection);
     }, [applyRanges]);
 
     const handleCellMouseDown = useCallback((e: React.MouseEvent, r: number, c: number) => {
@@ -187,8 +200,10 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
 
     const handleCellMouseEnter = useCallback((r: number, c: number) => {
         if (!isDraggingRef.current) return;
-        // While dragging, grow the active range to wherever the cursor is.
-        extendActiveRange({ r, c });
+        // While dragging, grow the active range to wherever the cursor is. Skip the
+        // row-selection sync on every move (it re-renders the whole table); the
+        // mouseup handler commits it once when the drag ends.
+        extendActiveRange({ r, c }, false);
     }, [extendActiveRange]);
 
     // Derive the set of highlighted cells and the anchor cell (bold box) from the ranges.
