@@ -316,8 +316,12 @@
         background-color: colors.$secondary-dark;
         color: white;
         text-align: center;
-        font-weight: 600;
+        font-weight: 300;
         border: 0.5px solid colors.$primary;
+
+        &.row-inactive {
+            background-color: rgba(colors.$secondary, 0.1);
+        }
 
         &.cell-selected {
             background-color: colors.$secondary-dark;

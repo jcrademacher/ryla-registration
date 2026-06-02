@@ -76,7 +76,8 @@ const CamperProfileModel = {
     documents: a.hasMany('CamperDocument', 'camperUserSub'),
     applicationFilepath: a.string(),
     recommendation: a.hasMany('Recommendation', 'camperUserSub'),
-    tshirtSize: a.string()
+    tshirtSize: a.string(),
+    active: a.boolean().default(true)
 };
 
 const CamperProfileModelViewState: Record<keyof typeof CamperProfileModel & 'createdAt', any> = {
@@ -97,6 +98,7 @@ const schema = a.schema({
         acceptedCampers: a.boolean(),
         rejectedCampers: a.boolean(),
         confirmedCampers: a.boolean(),
+        activeCampers: a.boolean(),
     }),
 
     Recommendation: a.model({
@@ -473,6 +475,7 @@ const schema = a.schema({
     allow.resource(rejectCamperDocument).to(["query", "mutate"]),
     allow.resource(approveCamperDocument).to(["query", "mutate"]),
     allow.resource(markMissingCamperDocument).to(["query", "mutate"]),
+    allow.resource(deleteUser).to(["query", "mutate"]),
 ]);
 
 export type Schema = ClientSchema<typeof schema>;

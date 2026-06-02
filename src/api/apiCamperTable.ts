@@ -19,7 +19,7 @@ const camperTableSelectionSet = [
     'parent2FirstName', 'parent2LastName', 'parent2Email', 'parent2Phone',
     'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship',
     'rotaryClubId', 'profileComplete', 'applicationComplete', 'applicationSubmittedAt',
-    'documentsComplete', 'attendanceConfirmations', 'arrivedAtCamp', 'campId',
+    'documentsComplete', 'attendanceConfirmations', 'arrivedAtCamp', 'campId', 'active',
     'applicationFilepath', 'tshirtSize',
     'createdAt', 'updatedAt',
     'recommendation.*',

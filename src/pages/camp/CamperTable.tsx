@@ -6,7 +6,7 @@ import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { flexRender } from "@tanstack/react-table";
 import { CamperProfileRowData } from "../../api/apiCamperTable";
 import { useNavigate } from "react-router";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 
 interface CamperTableProps {
@@ -63,6 +63,7 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
     tableApiRef.current = table;
 
     const rows = table.getRowModel().rows;
+    const visibleColumnCount = table.getVisibleLeafColumns().length;
     const rowsRef = useRef(rows);
     rowsRef.current = rows;
 
@@ -401,7 +402,7 @@ export function CamperTable({ table, isPending }: CamperTableProps) {
         if (rangesRef.current.length > 0) {
             paintSelection(rangesRef.current);
         }
-    }, [rows, isPending, paintSelection]);
+    }, [rows, isPending, visibleColumnCount, paintSelection]);
 
     return (
         <>
@@ -443,9 +444,9 @@ interface CamperTableRowProps {
     rowIndex: number;
 }
 
-const CamperTableRow = memo(function CamperTableRow({ row, rowIndex }: CamperTableRowProps) {
+function CamperTableRow({ row, rowIndex }: CamperTableRowProps) {
     return (
-        <tr>
+        <tr className={row.original.active ? "" : "text-muted text-decoration-line-through"}>
             {row.getVisibleCells().map((cell, colIndex) => {
                 const meta = cell.column.columnDef.meta as { className?: string } | undefined;
                 return (
@@ -462,4 +463,4 @@ const CamperTableRow = memo(function CamperTableRow({ row, rowIndex }: CamperTab
             })}
         </tr>
     );
-});
+}

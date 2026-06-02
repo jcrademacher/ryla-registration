@@ -7,7 +7,6 @@ import { Button, Form, Placeholder, DropdownButton } from 'react-bootstrap';
 import { useCampQuery } from '../../queries/adminQueries';
 import { Table as TanstackTable } from '@tanstack/table-core';
 import { CamperProfileRowData } from '../../api/apiCamperTable';
-import { ThinSpacer } from '../../components/ThinSpacer';
 
 // interface CampMetrics {
 //     profileCompleteCampers: number;
@@ -90,13 +89,19 @@ function TableFilters({ table }: { table: TanstackTable<CamperProfileRowData> })
         isAcceptedCampersChecked = value.includes("APPROVED") ?? false;
         isRejectedCampersChecked = value.includes("REJECTED") ?? false;
     }
-
-
+    
     return (
         <div className="d-flex flex-grow-1 column-gap-2 flex-row-reverse">
             <DropdownButton size="sm" variant="light" title="Filters">
                 <div className="filters-dropdown-container">
                     <div>
+                        <Form.Check
+                            type="checkbox"
+                            label="Active Campers"
+                            className="filter-item"
+                            checked={table.getColumn('active')?.getFilterValue() ? true : false}
+                            onChange={(e) => table.getColumn('active')?.setFilterValue(e.target.checked || undefined)}
+                        />
                         <Form.Check
                             type="checkbox"
                             label="Profiles Completed"
@@ -153,6 +158,7 @@ function TableFilters({ table }: { table: TanstackTable<CamperProfileRowData> })
                             checked={table.getColumn('documentsComplete')?.getFilterValue() ? true : false}
                             onChange={(e) => table.getColumn('documentsComplete')?.setFilterValue(e.target.checked)}
                         />
+                        
                         {/* <Form.Check
                             type="checkbox"
                             label="Confirmed Campers"
@@ -167,16 +173,16 @@ function TableFilters({ table }: { table: TanstackTable<CamperProfileRowData> })
             </DropdownButton>
             <DropdownButton size="sm" variant="light" title="Columns">
                 <div className="filters-dropdown-container">
-                    <Form.Check
+                    {/* <Form.Check
                         type="checkbox"
                         checked={table.getIsAllColumnsVisible()}
                         onChange={table.getToggleAllColumnsVisibilityHandler()}
                         label="Toggle All"
                     />
 
-                    <ThinSpacer />
+                    <ThinSpacer /> */}
                     <div className="filter-dropdown-items">
-                        {table.getAllLeafColumns().map((column) => (
+                        {table.getAllLeafColumns().filter(column => column.getCanHide()).map((column) => (
 
                             <Form.Check
                                 id={column.id}

@@ -37,6 +37,7 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
 
     const [showChangeApplicationStatus, setShowChangeApplicationStatus] = useState(false);
     const [showChangeReviewStatus, setShowChangeReviewStatus] = useState(false);
+    const [showChangeActiveStatus, setShowChangeActiveStatus] = useState(false);
 
     const [showUploadDocument, setShowUploadDocument] = useState(false);
 
@@ -65,6 +66,7 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
 
     const totalRows = table.getRowModel().rows.length;
     const selectedCount = table.getSelectedRowModel().rows.length;
+    const selectedActiveCount = selectedCampers.filter(camper => camper.active !== false).length;
 
     return (
         <>
@@ -177,6 +179,12 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                         >
                             Change review status{selectedCampers.length > 1 ? 'es' : ''}...
                         </Dropdown.Item>
+                        <Dropdown.Item
+                            disabled={!hasSelectedRows}
+                            onClick={() => setShowChangeActiveStatus(true)}
+                        >
+                            {selectedActiveCount === selectedCount ? 'Hide' : 'Show'} student{selectedCampers.length > 1 ? 's' : ''}...
+                        </Dropdown.Item>
 
                     </Dropdown.Menu>
 
@@ -217,7 +225,6 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                     </Dropdown.Menu>
 
                 </Dropdown>
-
                 <div className="ms-auto d-flex align-items-center"
                 >
                     <span>Showing {totalRows} student{totalRows !== 1 ? "s" : ""}{selectedCount > 0 && ( <> | {selectedCount} selected</> )}</span>
@@ -244,6 +251,11 @@ export function TableActions({ table }: { table: TanstackTable<CamperProfileRowD
                 table={table}
                 onClose={() => setShowChangeReviewStatus(false)}
                 show={showChangeReviewStatus}
+            />
+            <ChangeActiveStatusModal
+                table={table}
+                onClose={() => setShowChangeActiveStatus(false)}
+                show={showChangeActiveStatus}
             />
             <CampInfoModal
                 table={table}
@@ -688,6 +700,58 @@ function ChangeReviewStatusModal({
     );
 }
 
+function ChangeActiveStatusModal({
+    table,
+    onClose,
+    show,
+}: ChangeStatusModalProps) {
+    const { mutate: updateMultipleProfiles, isPending } = useUpdateMultipleProfilesMutation();
+    const queryClient = useQueryClient();
+    const selectedCampers = table.getSelectedRowModel().rows.map(row => row.original);
+    const selectedCount = selectedCampers.length;
+    const selectedActiveCount = selectedCampers.filter(camper => camper.active !== false).length;
+    const hiding = selectedActiveCount === selectedCount;
+
+    const handleConfirm = () => {
+        updateMultipleProfiles(
+            selectedCampers.map(camper => ({
+                userSub: camper.userSub,
+                active: !hiding,
+            })),
+            {
+                onSuccess: () => {
+                    emitToast(
+                        `${hiding ? 'Hid' : 'Shown'} ${selectedCount} student${selectedCount !== 1 ? 's' : ''}`,
+                        ToastType.Success,
+                    );
+                },
+                onSettled: () => {
+                    queryClient.invalidateQueries({ queryKey: ['camperDataAdmin'] });
+                    onClose();
+                },
+            },
+        );
+    };
+
+    return (
+        <ConfirmationModal
+            show={show}
+            onClose={onClose}
+            title={hiding ? 'Hide Students' : 'Show Students'}
+            confirmButtonText={hiding ? 'Hide' : 'Show'}
+            onConfirm={handleConfirm}
+            isLoading={isPending}
+        >
+            The following student{selectedCount !== 1 ? 's' : ''} will be {hiding ? 'hidden' : 'shown'}:
+            <ul>
+                {selectedCampers.map(camper => (
+                    <li key={camper.userSub}>{getCamperName(camper)}</li>
+                ))}
+            </ul>
+            Are you sure you want to do this?
+        </ConfirmationModal>
+    );
+}
 
 interface CampInfoModalProps {
     table: TanstackTable<CamperProfileRowData>;

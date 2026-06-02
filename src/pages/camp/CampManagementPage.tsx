@@ -90,10 +90,11 @@ const undefinedLastSortingFn = (rowA: Row<any>, rowB: Row<any>, columnId: string
 
 interface StatusColumnProps {
     status: "APPROVED" | "PENDING" | "REJECTED" | boolean | null | undefined,
-    isLoading?: boolean
+    isLoading?: boolean | null,
+    isActive?: boolean | null
 }
 
-function StatusColumn({ status, isLoading }: StatusColumnProps) {
+function StatusColumn({ status, isLoading, isActive }: StatusColumnProps) {
     let content;
     if (isLoading) {
         content = (
@@ -103,13 +104,13 @@ function StatusColumn({ status, isLoading }: StatusColumnProps) {
         );
     }
     else if (status === "APPROVED" || status === true) {
-        content = <div className="text-center"><FontAwesomeIcon className="text-success" icon={faCheck} /></div>;
+        content = <div className="text-center"><FontAwesomeIcon className={isActive ? "text-success" : "text-muted"} icon={faCheck} /></div>;
     }
     else if (status === "REJECTED") {
-        content = <div className="text-center"><FontAwesomeIcon className="text-danger" icon={faTimes} /></div>;
+        content = <div className="text-center"><FontAwesomeIcon className={isActive ? "text-danger" : "text-muted"} icon={faTimes} /></div>;
     }
     else {
-        content = <div className="text-center"><FontAwesomeIcon className="text-warning" icon={faClockRotateLeft} /></div>;
+        content = <div className="text-center"><FontAwesomeIcon className={isActive ? "text-warning" : "text-muted"} icon={faClockRotateLeft} /></div>;
     }
 
     return content;
@@ -132,7 +133,7 @@ function StatusHeader({ title, helpText }: { title: string, helpText?: string })
 }
     
 function RowIndexCell() {
-    return (<span ref={(node: HTMLSpanElement | null) => {
+    return (<span className="row-index-cell" ref={(node: HTMLSpanElement | null) => {
         if (node) {
             const rowIndex = node.closest('td')?.dataset.row;
             node.textContent = rowIndex != null ? String(Number(rowIndex) + 1) : '';
@@ -145,27 +146,35 @@ const columns = [
         id: 'rowIndex',
         header: '#',
         cell: () => <RowIndexCell />,
-        enableSorting: false,
         size: 40,
+        enableHiding: false,
+        enableSorting: false,
         meta: { className: 'row-index-cell' },
+    }),
+    columnHelper.accessor('active', {
+        header: 'Active',
+        enableHiding: false,
+        enableSorting: false,
+        // enableColumnFilter: false,
+        filterFn: (row, _columnId, filterValue) => row.getValue('active') === filterValue,
     }),
     columnHelper.accessor('profileComplete', {
         header: () => <StatusHeader title="P" helpText="Camper has completed basic information" />,
-        cell: (props) => <StatusColumn status={props.getValue()} />,
+        cell: (props) => <StatusColumn isActive={props.row.original.active} status={props.getValue()} />,
     }),
     columnHelper.accessor('applicationComplete', {
         header: () => <StatusHeader title="A" helpText="Camper has completed application (including essay if required)" />,
-        cell: (props) => <StatusColumn status={props.getValue()} />,
+        cell: (props) => <StatusColumn isActive={props.row.original.active} status={props.getValue()} />,
     }),
     columnHelper.accessor('rotarianReview', {
         header: () => <StatusHeader title="R" helpText="Rotarian review status" />,
-        cell: (props) => <StatusColumn status={props.getValue()} />,
+        cell: (props) => <StatusColumn isActive={props.row.original.active} status={props.getValue()} />,
     }),
     columnHelper.accessor('documentsComplete', {
         header: () => {
             return <StatusHeader title="D" helpText="Camper has completed all required documents (including mailed forms)" />;
         },
-        cell: (props) => <StatusColumn status={props.getValue()} />
+        cell: (props) => <StatusColumn isActive={props.row.original.active} status={props.getValue()} />
     }),
     columnHelper.accessor(row => {
         const val = row.applicationSubmittedAt;
@@ -316,19 +325,25 @@ export const CampManagementPage = () => {
     const mutateViewState = useUpdateCamperProfileViewStateMutation();
     const mutateFilterState = useUpdateCamperProfileFilterStateMutation();
 
+    const columnVisibility = useMemo(() => ({
+        ...(camp?.viewState ?? {}),
+        active: false,
+    }), [camp?.viewState]);
+
     const handleColumnVisibilityChange: OnChangeFn<VisibilityState> = (updaterOrValue) => {
         let newVisibility;
         if (typeof updaterOrValue === 'function') {
-            newVisibility = updaterOrValue(camp?.viewState ?? {});
+            newVisibility = updaterOrValue(columnVisibility);
         }
         else {
             newVisibility = updaterOrValue;
         }
 
-        queryClient.setQueryData(['camp', campId], { ...camp, viewState: newVisibility });
+        const { active: _active, rowIndex: _rowIndex, ...viewStateToSave } = newVisibility;
+        queryClient.setQueryData(['camp', campId], { ...camp, viewState: viewStateToSave });
         mutateViewState.mutate({
             campId: campId ?? "",
-            viewState: newVisibility,
+            viewState: viewStateToSave,
         }, {
             onSuccess: () => {
                 console.log("Successfully updated view state");
@@ -382,6 +397,13 @@ export const CampManagementPage = () => {
             });
         }
 
+        if (camp?.filterState?.activeCampers) {
+            filterResult.push({
+                id: 'active',
+                value: true,
+            });
+        }
+
         return filterResult;
 
     }, [camp?.filterState]);
@@ -398,8 +420,6 @@ export const CampManagementPage = () => {
             newFilterState = updaterOrValue;
         }
 
-        console.log(newFilterState);
-
         const rotarianReviewFilter = newFilterState.find(filter => filter.id === 'rotarianReview')?.value;
 
         const newFilterStateObject = {
@@ -409,6 +429,7 @@ export const CampManagementPage = () => {
             acceptedCampers: Array.isArray(rotarianReviewFilter) && rotarianReviewFilter.includes("APPROVED") ? true : false,
             rejectedCampers: Array.isArray(rotarianReviewFilter) && rotarianReviewFilter.includes("REJECTED") ? true : false,
             confirmedCampers: newFilterState.find(filter => filter.id === 'attendanceConfirmations')?.value ? true : false,
+            activeCampers: newFilterState.find(filter => filter.id === 'active')?.value ? true : false,
         };
 
         queryClient.setQueryData(['camp', campId], { ...camp, filterState: newFilterStateObject });
@@ -445,7 +466,7 @@ export const CampManagementPage = () => {
         getRowId: (row) => row.userSub,
         state: {
             sorting,
-            columnVisibility: camp?.viewState ?? {},
+            columnVisibility,
             columnFilters: filterState,
             rowSelection
         },

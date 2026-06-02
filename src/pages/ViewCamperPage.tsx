@@ -507,6 +507,10 @@ export function ViewCamperPage() {
                 ) : (
                     <Badge bg="warning" text="dark">Documents Incomplete</Badge>
                 )}
+
+                {!camperProfile?.active && (
+                    <Badge bg="warning" text="dark">Inactive / Hidden</Badge>
+                )}
             </div>
 
             <Row>
